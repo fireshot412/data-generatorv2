@@ -1,0 +1,3275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mimic - Data Generation Console</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366F1;
+            --primary-dark: #4F46E5;
+            --primary-light: #818CF8;
+            --secondary: #764ba2;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --error: #EF4444;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-300: #D1D5DB;
+            --gray-400: #9CA3AF;
+            --gray-500: #6B7280;
+            --gray-600: #4B5563;
+            --gray-700: #374151;
+            --gray-800: #1F2937;
+            --gray-900: #111827;
+            --sidebar-width: 260px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            overflow-x: hidden;
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: white;
+            border-right: 1px solid var(--gray-200);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            font-size: 28px;
+            color: var(--primary);
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 12px;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            margin-bottom: 24px;
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gray-500);
+            padding: 0 12px 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            color: var(--gray-700);
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: var(--gray-100);
+            color: var(--gray-900);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+
+        .nav-item-icon {
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .user-menu:hover {
+            background: var(--gray-100);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .user-email {
+            font-size: 11px;
+            color: var(--gray-500);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .topbar-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-50);
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--gray-200);
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stat-icon.primary {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .stat-icon.success {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .stat-icon.warning {
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .stat-icon.error {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .stat-change {
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .stat-change.positive {
+            color: var(--success);
+        }
+
+        .stat-change.negative {
+            color: var(--error);
+        }
+
+        /* Charts */
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--gray-200);
+            margin-bottom: 24px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Jobs List */
+        .jobs-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .job-card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .job-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .job-card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--gray-100);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .job-title-section {
+            flex: 1;
+        }
+
+        .job-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 4px;
+        }
+
+        .job-subtitle {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        .job-status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .job-status-badge.running {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .job-status-badge.paused {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .job-status-badge.stopped {
+            background: rgba(107, 114, 128, 0.1);
+            color: var(--gray-600);
+        }
+
+        .job-status-badge.initializing {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .job-card-body {
+            padding: 20px 24px;
+        }
+
+        .job-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .job-stat {
+            text-align: center;
+        }
+
+        .job-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .job-stat-label {
+            font-size: 12px;
+            color: var(--gray-600);
+            margin-top: 4px;
+        }
+
+        .job-next-activity {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            border-left: 3px solid var(--primary);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .job-next-activity.inactive {
+            background: linear-gradient(135deg, rgba(107, 114, 128, 0.03) 0%, rgba(156, 163, 175, 0.03) 100%);
+            border-left: 3px solid var(--gray-400);
+            opacity: 0.7;
+        }
+
+        .job-next-activity-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .job-next-activity.inactive .job-next-activity-label {
+            color: var(--gray-500);
+        }
+
+        .job-next-activity-time {
+            font-size: 14px;
+            color: var(--gray-700);
+        }
+
+        .job-next-activity.inactive .job-next-activity-time {
+            color: var(--gray-500);
+        }
+
+        .job-next-activity-note {
+            font-size: 11px;
+            color: var(--gray-500);
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .job-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-error {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-gray {
+            background: var(--gray-500);
+            color: white;
+        }
+
+        .btn-info {
+            background: #3B82F6;
+            color: white;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+            color: var(--gray-600);
+            margin-bottom: 24px;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .toast {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success {
+            border-left: 3px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 3px solid var(--error);
+        }
+
+        .toast.info {
+            border-left: 3px solid var(--primary);
+        }
+
+        .toast-icon {
+            font-size: 20px;
+        }
+
+        .toast-message {
+            flex: 1;
+            font-size: 14px;
+            color: var(--gray-900);
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.2s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 1000px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--gray-100);
+            color: var(--gray-600);
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--gray-200);
+        }
+
+        .modal-body {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        /* Form in modal */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 8px;
+        }
+
+        .label-description {
+            font-weight: 400;
+            color: var(--gray-500);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Industry Grid */
+        .industry-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .industry-option {
+            padding: 12px;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .industry-option:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .industry-option.selected {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+
+        /* User tokens */
+        .user-tokens-container {
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .user-token-item {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .user-token-item input:first-child {
+            flex: 0 0 150px;
+        }
+
+        .user-token-item input:nth-child(2) {
+            flex: 1;
+        }
+
+        .remove-user-btn {
+            flex: 0 0 auto;
+            padding: 8px 12px;
+            background: var(--error);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Activity Log */
+        .activity-log {
+            font-size: 13px;
+        }
+
+        .activity-item {
+            padding: 16px;
+            border-bottom: 1px solid var(--gray-100);
+            display: flex;
+            gap: 16px;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-time {
+            flex: 0 0 140px;
+            color: var(--gray-500);
+            font-size: 12px;
+        }
+
+        .activity-user {
+            flex: 0 0 80px;
+        }
+
+        .activity-user-badge {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .activity-details {
+            flex: 1;
+        }
+
+        .activity-action {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .activity-description {
+            color: var(--gray-700);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            :root {
+                --sidebar-width: 220px;
+            }
+
+            .content-area {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" class="logo">
+                    <span class="logo-icon">◐</span>
+                    <span class="logo-text">Mimic</span>
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <a class="nav-item active" data-view="dashboard">
+                        <span class="nav-item-icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                    <a class="nav-item" data-view="jobs">
+                        <span class="nav-item-icon">🚀</span>
+                        <span>Jobs</span>
+                    </a>
+                    <a class="nav-item" data-view="connections">
+                        <span class="nav-item-icon">🔌</span>
+                        <span>Connections</span>
+                    </a>
+                    <a class="nav-item" data-view="settings">
+                        <span class="nav-item-icon">⚙️</span>
+                        <span>Settings</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Resources</div>
+                    <a class="nav-item" href="/old" target="_blank">
+                        <span class="nav-item-icon">📦</span>
+                        <span>Legacy UI</span>
+                    </a>
+                    <a class="nav-item" href="https://docs.anthropic.com" target="_blank">
+                        <span class="nav-item-icon">📖</span>
+                        <span>Documentation</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-menu" onclick="logout()">
+                    <div class="user-avatar">U</div>
+                    <div class="user-info">
+                        <div class="user-name">User</div>
+                        <div class="user-email">Logout →</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="topbar">
+                <h1 class="topbar-title" id="pageTitle">Dashboard</h1>
+                <div class="topbar-actions">
+                    <button class="btn btn-secondary" onclick="refreshData()">
+                        🔄 Refresh
+                    </button>
+                    <button class="btn btn-primary" onclick="showNewJobModal()">
+                        + New Job
+                    </button>
+                </div>
+            </div>
+
+            <div class="content-area" id="contentArea">
+                <!-- Content will be loaded here -->
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_BASE = 'http://localhost:5001/api';
+        let currentView = 'dashboard';
+        let jobsData = [];
+        let selectedIndustry = 'technology';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeNavigation();
+            loadView('dashboard');
+
+            // Auto-refresh every 30 seconds
+            setInterval(() => {
+                if (currentView === 'dashboard' || currentView === 'jobs') {
+                    refreshData();
+                }
+            }, 30000);
+        });
+
+        function initializeNavigation() {
+            document.querySelectorAll('.nav-item[data-view]').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const view = item.dataset.view;
+                    loadView(view);
+
+                    // Update active state
+                    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+                });
+            });
+        }
+
+        async function loadView(view) {
+            currentView = view;
+            const contentArea = document.getElementById('contentArea');
+            const pageTitle = document.getElementById('pageTitle');
+
+            switch(view) {
+                case 'dashboard':
+                    pageTitle.textContent = 'Dashboard';
+                    await renderDashboard();
+                    break;
+                case 'jobs':
+                    pageTitle.textContent = 'Jobs';
+                    await renderJobs();
+                    break;
+                case 'connections':
+                    pageTitle.textContent = 'Connections';
+                    renderConnections();
+                    break;
+                case 'settings':
+                    pageTitle.textContent = 'Settings';
+                    renderSettings();
+                    break;
+            }
+        }
+
+        async function renderDashboard() {
+            const contentArea = document.getElementById('contentArea');
+            contentArea.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading dashboard...</p></div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/jobs`);
+                const data = await response.json();
+
+                if (data.success) {
+                    jobsData = data.jobs;
+
+                    // Calculate stats
+                    const stats = calculateStats(jobsData);
+
+                    contentArea.innerHTML = `
+                        <div class="dashboard-grid">
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <div class="stat-icon primary">🚀</div>
+                                    <div>
+                                        <div class="stat-label">Active Jobs</div>
+                                    </div>
+                                </div>
+                                <div class="stat-value">${stats.activeJobs}</div>
+                                <div class="stat-change">${stats.runningJobs} running, ${stats.pausedJobs} paused</div>
+                            </div>
+
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <div class="stat-icon success">⚡</div>
+                                    <div>
+                                        <div class="stat-label">Total Activities</div>
+                                    </div>
+                                </div>
+                                <div class="stat-value">${stats.totalActivities.toLocaleString()}</div>
+                                <div class="stat-change">Actions generated by AI</div>
+                            </div>
+
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <div class="stat-icon warning">🔌</div>
+                                    <div>
+                                        <div class="stat-label">Platforms</div>
+                                    </div>
+                                </div>
+                                <div class="stat-value">${stats.platformCount}</div>
+                                <div class="stat-change">${Array.from(stats.platforms).join(', ')}</div>
+                            </div>
+
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <div class="stat-icon ${stats.totalErrors > 0 ? 'error' : 'success'}">
+                                        ${stats.totalErrors > 0 ? '⚠️' : '✅'}
+                                    </div>
+                                    <div>
+                                        <div class="stat-label">System Health</div>
+                                    </div>
+                                </div>
+                                <div class="stat-value">${stats.totalErrors}</div>
+                                <div class="stat-change">${stats.totalErrors > 0 ? 'Errors detected' : 'All systems operational'}</div>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">Job Status Distribution</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="statusChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3 class="chart-title">Activity Breakdown</h3>
+                                    <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">Actions generated by type</div>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="tasksChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3 class="chart-title">Activity Over Time</h3>
+                                    <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">Daily activity trend</div>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="activityChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">Connection Health</h3>
+                                <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">Status of configured connections</div>
+                            </div>
+                            <div id="connectionHealthContainer" style="padding: 20px;"></div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">Recent Activity</h3>
+                            </div>
+                            <div id="recentActivityContainer"></div>
+                        </div>
+                    `;
+
+                    // Render charts
+                    renderStatusChart(stats);
+                    renderActivityBreakdownChart(jobsData);
+                    renderActivityChart(jobsData);
+                    await renderConnectionHealth();
+                    await renderRecentActivity();
+
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                contentArea.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-title">Error Loading Dashboard</div>
+                        <div class="empty-state-text">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function calculateStats(jobs) {
+            const stats = {
+                activeJobs: 0,
+                runningJobs: 0,
+                pausedJobs: 0,
+                stoppedJobs: 0,
+                totalActivities: 0,
+                totalApiCalls: 0,
+                totalLLMCalls: 0,
+                totalErrors: 0,
+                platforms: new Set(),
+                activityTypes: {}
+            };
+
+            jobs.forEach(job => {
+                if (job.status === 'running') {
+                    stats.runningJobs++;
+                    stats.activeJobs++;
+                } else if (job.status === 'paused') {
+                    stats.pausedJobs++;
+                    stats.activeJobs++;
+                } else if (job.status === 'stopped') {
+                    stats.stoppedJobs++;
+                }
+
+                // Count all activity types from stats
+                if (job.stats) {
+                    stats.totalActivities += (job.stats.projects_created || 0);
+                    stats.totalActivities += (job.stats.tasks_created || 0);
+                    stats.totalActivities += (job.stats.subtasks_created || 0);
+                    stats.totalActivities += (job.stats.comments_added || 0);
+                    stats.totalActivities += (job.stats.task_state_changes || 0);
+
+                    stats.totalErrors += (job.stats.errors || 0);
+                }
+
+                // Track platforms
+                if (job.vendor) {
+                    stats.platforms.add(job.vendor);
+                }
+            });
+
+            stats.platformCount = stats.platforms.size;
+            return stats;
+        }
+
+        function renderStatusChart(stats) {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Running', 'Paused', 'Stopped'],
+                    datasets: [{
+                        data: [stats.runningJobs, stats.pausedJobs, stats.stoppedJobs],
+                        backgroundColor: [
+                            '#10B981',
+                            '#F59E0B',
+                            '#6B7280'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderActivityBreakdownChart(jobs) {
+            const ctx = document.getElementById('tasksChart').getContext('2d');
+
+            // Aggregate activity types across all jobs
+            let activityCounts = {
+                'Created': 0,
+                'Modified': 0,
+                'Completed': 0,
+                'Errors': 0
+            };
+
+            jobs.forEach(job => {
+                if (job.stats) {
+                    activityCounts['Created'] += (job.stats.projects_created || 0) + (job.stats.tasks_created || 0) + (job.stats.subtasks_created || 0);
+                    activityCounts['Modified'] += (job.stats.comments_added || 0) + (job.stats.task_state_changes || 0);
+                    activityCounts['Completed'] += (job.stats.tasks_completed || 0);
+                    activityCounts['Errors'] += (job.stats.errors || 0);
+                }
+            });
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(activityCounts),
+                    datasets: [{
+                        label: 'Activities',
+                        data: Object.values(activityCounts),
+                        backgroundColor: [
+                            '#6366F1',
+                            '#F59E0B',
+                            '#10B981',
+                            '#EF4444'
+                        ],
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderActivityChart(jobs) {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+
+            // Generate last 7 days of data
+            const labels = [];
+            const data = [];
+            const now = new Date();
+
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+
+                // Simulate activity data (in real app, this would come from API)
+                data.push(Math.floor(Math.random() * 50) + 10);
+            }
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Activities',
+                        data: data,
+                        borderColor: '#6366F1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        async function renderRecentActivity() {
+            const container = document.getElementById('recentActivityContainer');
+
+            if (jobsData.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-text">No activity yet</div></div>';
+                return;
+            }
+
+            // Get first job's activity
+            try {
+                const jobId = jobsData[0].job_id;
+                const response = await fetch(`${API_BASE}/jobs/${jobId}/activity_log?limit=10`);
+                const data = await response.json();
+
+                if (data.success && data.activities.length > 0) {
+                    let html = '<div class="activity-log">';
+
+                    data.activities.slice(0, 10).forEach(activity => {
+                        const timestamp = new Date(activity.timestamp);
+                        const {action, details, user} = formatActivity(activity);
+
+                        html += `
+                            <div class="activity-item">
+                                <div class="activity-time">${timestamp.toLocaleString()}</div>
+                                ${user ? `
+                                    <div class="activity-user">
+                                        <div class="activity-user-badge">${user}</div>
+                                    </div>
+                                ` : ''}
+                                <div class="activity-details">
+                                    <div class="activity-action">${action}</div>
+                                    <div class="activity-description">${details}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-text">No activity yet</div></div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Error loading activity</div></div>';
+            }
+        }
+
+        function formatActivity(activity) {
+            const activityDetails = activity.details;
+            let user = activityDetails.user || null;
+            let action = '';
+            let details = '';
+
+            switch(activity.action) {
+                case 'project_created':
+                    action = '🎯 Project Created';
+                    details = `Created project: <strong>${activityDetails.project_name}</strong>`;
+                    break;
+                case 'task_created':
+                    action = '📋 Work Item Created';
+                    details = `Created item: <strong>${activityDetails.task_name}</strong>`;
+                    break;
+                case 'comment_added':
+                    action = '💬 Comment Added';
+                    details = `Commented on <strong>${activityDetails.task_name || 'item'}</strong>`;
+                    break;
+                case 'task_completed':
+                    action = '✅ Item Completed';
+                    details = `Completed: <strong>${activityDetails.task_name || activityDetails.task_id}</strong>`;
+                    break;
+                case 'task_blocked':
+                    action = '🚫 Item Blocked';
+                    details = `Blocked: <strong>${activityDetails.task_name || activityDetails.task_id}</strong>`;
+                    break;
+                case 'task_unblocked':
+                    action = '🔓 Item Unblocked';
+                    details = `Unblocked: <strong>${activityDetails.task_name || activityDetails.task_id}</strong>`;
+                    break;
+                default:
+                    action = activity.action.replace(/_/g, ' ').toUpperCase();
+                    details = JSON.stringify(activityDetails);
+            }
+
+            return {action, details, user};
+        }
+
+        async function renderConnectionHealth() {
+            const container = document.getElementById('connectionHealthContainer');
+            const connections = loadConnections();
+
+            if (connections.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #6B7280; padding: 20px;">
+                        <div style="font-size: 14px; margin-bottom: 12px;">No connections configured</div>
+                        <button class="btn btn-primary btn-sm" onclick="document.querySelector('.nav-item[data-view=\\'connections\\']').click()">
+                            Add Connection
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Build connection health display
+            let html = '<div style="display: grid; gap: 12px;">';
+
+            for (const conn of connections) {
+                const platformInfo = getPlatformInfo(conn.vendor);
+
+                // Test connection health by checking if any users have valid tokens
+                // For now, we'll show "healthy" if users exist, but in production you'd validate tokens
+                const isHealthy = conn.users && conn.users.length > 0;
+                const statusColor = isHealthy ? '#10B981' : '#EF4444';
+                const statusIcon = isHealthy ? '●' : '●';
+                const statusText = isHealthy ? 'Connected' : 'Disconnected';
+
+                html += `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: #F9FAFB; border-radius: 8px; border-left: 4px solid ${statusColor};">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 8px; padding: 8px;">
+                                ${platformInfo.logo ?
+                                    `<img src="${platformInfo.logo}" alt="${platformInfo.name}" style="max-width: 100%; max-height: 100%;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                     <span style="display: none; font-size: 20px;">${platformInfo.fallbackIcon}</span>` :
+                                    `<span style="font-size: 20px;">${platformInfo.fallbackIcon}</span>`
+                                }
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; font-size: 14px; color: #111827;">${conn.name}</div>
+                                <div style="font-size: 12px; color: #6B7280; margin-top: 2px;">
+                                    ${platformInfo.name} • ${conn.users.length} user${conn.users.length !== 1 ? 's' : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="color: ${statusColor}; font-size: 12px;">${statusIcon}</span>
+                            <span style="font-size: 13px; font-weight: 500; color: ${statusColor};">${statusText}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        async function renderJobs() {
+            const contentArea = document.getElementById('contentArea');
+            contentArea.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading jobs...</p></div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/jobs`);
+                const data = await response.json();
+
+                if (data.success) {
+                    jobsData = data.jobs;
+
+                    if (jobsData.length === 0) {
+                        contentArea.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">🚀</div>
+                                <div class="empty-state-title">No Jobs Yet</div>
+                                <div class="empty-state-text">Get started by creating your first continuous generation job</div>
+                                <button class="btn btn-primary" onclick="showNewJobModal()">+ Create First Job</button>
+                            </div>
+                        `;
+                    } else {
+                        let html = '<div class="jobs-grid">';
+
+                        jobsData.forEach(job => {
+                            html += renderJobCard(job);
+                        });
+
+                        html += '</div>';
+                        contentArea.innerHTML = html;
+                    }
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                contentArea.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-title">Error Loading Jobs</div>
+                        <div class="empty-state-text">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderJobCard(job) {
+            const startedAt = new Date(job.started_at);
+            const now = new Date();
+            const runtimeHours = Math.floor((now - startedAt) / (1000 * 60 * 60));
+
+            return `
+                <div class="job-card">
+                    <div class="job-card-header">
+                        <div class="job-title-section">
+                            <div class="job-title">${job.job_name || job.workspace_name}</div>
+                            <div class="job-subtitle">${job.vendor || 'asana'} • ${job.industry}${job.job_name ? ' • ' + job.workspace_name : ''} • Job ID: ${job.job_id}</div>
+                        </div>
+                        <div class="job-status-badge ${job.status}">${job.status}</div>
+                    </div>
+
+                    <div class="job-card-body">
+                        <div class="job-stats-grid">
+                            <div class="job-stat">
+                                <div class="job-stat-value">${job.stats.projects_created}</div>
+                                <div class="job-stat-label">Projects</div>
+                            </div>
+                            <div class="job-stat">
+                                <div class="job-stat-value">${job.stats.tasks_created}</div>
+                                <div class="job-stat-label">Tasks</div>
+                            </div>
+                            <div class="job-stat">
+                                <div class="job-stat-value">${job.stats.subtasks_created || 0}</div>
+                                <div class="job-stat-label">Subtasks</div>
+                            </div>
+                            <div class="job-stat">
+                                <div class="job-stat-value">${job.stats.comments_added}</div>
+                                <div class="job-stat-label">Comments</div>
+                            </div>
+                            <div class="job-stat">
+                                <div class="job-stat-value">${job.stats.tasks_completed}</div>
+                                <div class="job-stat-label">Completed</div>
+                            </div>
+                            <div class="job-stat">
+                                <div class="job-stat-value">${job.stats.custom_fields_created || 0}</div>
+                                <div class="job-stat-label">Custom Fields</div>
+                            </div>
+                            <div class="job-stat">
+                                <div class="job-stat-value">${job.stats.sections_created || 0}</div>
+                                <div class="job-stat-label">Sections</div>
+                            </div>
+                            <div class="job-stat">
+                                <div class="job-stat-value">${job.stats.tags_created || 0}</div>
+                                <div class="job-stat-label">Tags</div>
+                            </div>
+                            <div class="job-stat">
+                                <div class="job-stat-value">${job.stats.portfolios_created || 0}</div>
+                                <div class="job-stat-label">Portfolios</div>
+                            </div>
+                        </div>
+
+                        ${job.status === 'initializing' ? `
+                            <div class="job-next-activity">
+                                <div class="job-next-activity-label">⚙️ Status</div>
+                                <div class="job-next-activity-time">Generating initial data...</div>
+                                <div class="job-next-activity-note">This job is creating its first projects and tasks. It will transition to 'running' status once complete.</div>
+                            </div>
+                        ` : job.next_activity_time ? `
+                            <div class="job-next-activity ${job.status === 'stopped' || job.status === 'paused' ? 'inactive' : ''}">
+                                <div class="job-next-activity-label">⏰ Next Scheduled Activity</div>
+                                ${(job.status === 'stopped' || job.status === 'paused') && new Date(job.next_activity_time) < new Date() ?
+                                    '<div class="job-next-activity-time">Will run upon start</div>' :
+                                    '<div class="job-next-activity-time">' + formatScheduledTime(new Date(job.next_activity_time)) + '</div>'
+                                }
+                                ${job.status === 'stopped' || job.status === 'paused' ?
+                                    '<div class="job-next-activity-note">Job is ' + job.status + '. Start the job to resume scheduled activities.</div>'
+                                    : ''}
+                            </div>
+                        ` : ''}
+
+                        <div class="job-actions">
+                            ${job.status === 'running' || job.status === 'paused' || job.status === 'stopped' ?
+                                `<button class="btn btn-sm btn-primary" onclick="generateNow('${job.job_id}')">⚡ Generate Now</button>` :
+                                ''
+                            }
+                            ${job.status === 'running' || job.status === 'initializing' ?
+                                `<button class="btn btn-sm btn-warning" onclick="stopJob('${job.job_id}')">⏹ Stop</button>` :
+                                (job.status === 'stopped' || job.status === 'paused') ?
+                                `<button class="btn btn-sm btn-success" onclick="resumeJob('${job.job_id}')">▶️ Start</button>` :
+                                ''
+                            }
+                            <button class="btn btn-sm btn-info" onclick="viewActivityLog('${job.job_id}')">📋 View Log</button>
+                            <button class="btn btn-sm btn-gray" onclick="deleteJob('${job.job_id}')">🗑 Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSettings() {
+            const contentArea = document.getElementById('contentArea');
+
+            // Load saved settings
+            const settings = loadSettings();
+
+            contentArea.innerHTML = `
+                <div style="max-width: 800px;">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">API Configuration</h3>
+                        </div>
+                        <div style="padding: 0 24px 24px;">
+                            <p style="color: var(--gray-600); margin-bottom: 20px;">
+                                Configure your Anthropic API key for generating AI content. Workspace and user credentials are managed in the Connections page.
+                            </p>
+
+                            <form id="settingsForm" onsubmit="saveSettings(event)">
+                                <div class="form-group">
+                                    <label>Anthropic API Key (Claude AI)
+                                        <div class="label-description">Used for generating realistic content. Get yours at console.anthropic.com</div>
+                                    </label>
+                                    <input type="password" id="settingsAnthropicKey"
+                                           placeholder="sk-ant-api03-..."
+                                           value="${settings.anthropicKey || ''}"
+                                           required>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">
+                                    💾 Save Settings
+                                </button>
+                            </form>
+
+                            <div style="margin-top: 24px; padding: 16px; background: var(--gray-50); border-radius: 8px; border-left: 3px solid var(--primary);">
+                                <div style="font-size: 14px; color: var(--gray-700); margin-bottom: 8px;">
+                                    <strong>💡 Tip:</strong> This is a BYOK (Bring Your Own Key) model
+                                </div>
+                                <div style="font-size: 13px; color: var(--gray-600); line-height: 1.5;">
+                                    You provide your own Anthropic API key, and LLM costs are charged directly to your Anthropic account.
+                                    Workspace credentials and user tokens are configured in the <a href="#" onclick="document.querySelector('.nav-item[data-view=\\'connections\\']').click(); return false;" style="color: var(--primary); text-decoration: underline;">Connections</a> page.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-card" style="margin-top: 24px;">
+                        <div class="chart-header">
+                            <h3 class="chart-title">About Mimic</h3>
+                        </div>
+                        <div style="padding: 0 24px 24px;">
+                            <p style="color: var(--gray-600); line-height: 1.6;">
+                                Mimic generates realistic Asana data with AI-powered content that simulates
+                                authentic team activity. Use it to test, demo, or populate workspaces with
+                                believable projects, tasks, and comments.
+                            </p>
+                            <div style="margin-top: 20px; padding: 16px; background: var(--gray-50); border-radius: 8px;">
+                                <div style="font-size: 13px; color: var(--gray-600);">
+                                    <div style="margin-bottom: 8px;"><strong>Version:</strong> 1.0.0</div>
+                                    <div style="margin-bottom: 8px;"><strong>Status:</strong> <span style="color: var(--success);">● Active</span></div>
+                                    <div><strong>Server:</strong> http://localhost:5001</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getPlatformInfo(vendor) {
+            const platforms = {
+                'asana': {
+                    name: 'Asana',
+                    color: '#F06A6A',
+                    logo: 'https://cdn.worldvectorlogo.com/logos/asana-logo.svg',
+                    fallbackIcon: '🎯'
+                },
+                'jira': {
+                    name: 'Jira',
+                    color: '#0052CC',
+                    logo: 'https://cdn.worldvectorlogo.com/logos/jira-1.svg',
+                    fallbackIcon: '🔷'
+                },
+                'monday': {
+                    name: 'Monday.com',
+                    color: '#FF3D57',
+                    logo: 'https://cdn.worldvectorlogo.com/logos/monday-logo.svg',
+                    fallbackIcon: '📅'
+                },
+                'clickup': {
+                    name: 'ClickUp',
+                    color: '#7B68EE',
+                    logo: 'https://cdn.worldvectorlogo.com/logos/clickup-logo.svg',
+                    fallbackIcon: '⬆️'
+                },
+                'trello': {
+                    name: 'Trello',
+                    color: '#0079BF',
+                    logo: 'https://cdn.worldvectorlogo.com/logos/trello.svg',
+                    fallbackIcon: '📋'
+                },
+                'linear': {
+                    name: 'Linear',
+                    color: '#5E6AD2',
+                    logo: 'https://asset.brandfetch.io/idZAyF9rlg/idm22YDjHa.svg',
+                    fallbackIcon: '📐'
+                }
+            };
+            return platforms[vendor] || {
+                name: vendor,
+                color: '#6B7280',
+                logo: null,
+                fallbackIcon: '🔌'
+            };
+        }
+
+        function renderConnections() {
+            const contentArea = document.getElementById('contentArea');
+            const connections = loadConnections();
+
+            contentArea.innerHTML = `
+                <div style="max-width: 1400px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <div>
+                            <h2 style="font-size: 20px; font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">Your Connections</h2>
+                            <p style="color: var(--gray-600); font-size: 14px;">${connections.length} connection${connections.length !== 1 ? 's' : ''} configured</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="showAddConnectionModal()">
+                            + Add Connection
+                        </button>
+                    </div>
+
+                    ${connections.length === 0 ? `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🔌</div>
+                            <div class="empty-state-title">No Connections Yet</div>
+                            <div class="empty-state-text">
+                                Add your first connection to start generating data. A connection includes your workspace and user API tokens.
+                            </div>
+                            <button class="btn btn-primary" onclick="showAddConnectionModal()">+ Add First Connection</button>
+                        </div>
+                    ` : `
+                        <div class="chart-card">
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid var(--gray-200);">
+                                            <th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Platform</th>
+                                            <th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Connection Name</th>
+                                            <th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Workspace</th>
+                                            <th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Users</th>
+                                            <th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Created</th>
+                                            <th style="padding: 16px; text-align: right; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${connections.map(conn => {
+                                            const platformInfo = getPlatformInfo(conn.vendor);
+                                            const createdDate = new Date(conn.createdAt);
+                                            const formattedDate = createdDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+                                            return `
+                                                <tr style="border-bottom: 1px solid var(--gray-100); transition: background 0.2s;" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background='white'">
+                                                    <td style="padding: 16px;">
+                                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                                            <div style="width: 40px; height: 40px; border-radius: 8px; background: ${platformInfo.color}15; display: flex; align-items: center; justify-content: center; padding: 8px; overflow: hidden;">
+                                                                ${platformInfo.logo ?
+                                                                    `<img src="${platformInfo.logo}" alt="${platformInfo.name}" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                                                    <span style="display: none; font-size: 20px;">${platformInfo.fallbackIcon}</span>` :
+                                                                    `<span style="font-size: 20px;">${platformInfo.fallbackIcon}</span>`
+                                                                }
+                                                            </div>
+                                                            <div>
+                                                                <div style="font-weight: 600; font-size: 14px; color: var(--gray-900);">
+                                                                    ${platformInfo.name}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td style="padding: 16px;">
+                                                        <div style="font-weight: 500; font-size: 14px; color: var(--gray-900);">
+                                                            ${conn.name}
+                                                        </div>
+                                                    </td>
+                                                    <td style="padding: 16px;">
+                                                        <div style="font-family: monospace; font-size: 13px; color: var(--gray-600); background: var(--gray-50); padding: 4px 8px; border-radius: 4px; display: inline-block;">
+                                                            ${conn.workspaceGid}
+                                                        </div>
+                                                    </td>
+                                                    <td style="padding: 16px;">
+                                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                                            <div style="display: flex; margin-left: -4px;">
+                                                                ${conn.users.slice(0, 3).map((user, idx) => `
+                                                                    <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 11px; border: 2px solid white; margin-left: -4px; z-index: ${3 - idx};" title="${user.name}">
+                                                                        ${user.name.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                `).join('')}
+                                                            </div>
+                                                            <span style="font-size: 13px; color: var(--gray-600); font-weight: 500;">
+                                                                ${conn.users.length} user${conn.users.length !== 1 ? 's' : ''}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td style="padding: 16px;">
+                                                        <div style="font-size: 13px; color: var(--gray-600);">
+                                                            ${formattedDate}
+                                                        </div>
+                                                    </td>
+                                                    <td style="padding: 16px; text-align: right;">
+                                                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                                            <button class="btn btn-sm btn-secondary" onclick="editConnection('${conn.id}')" title="Edit connection">
+                                                                ✏️
+                                                            </button>
+                                                            <button class="btn btn-sm" style="background: #F59E0B; color: white;" onclick="cleanWorkspace('${conn.id}', '${conn.workspaceGid}')" title="Clean all data from workspace">
+                                                                🧹
+                                                            </button>
+                                                            <button class="btn btn-sm btn-error" onclick="deleteConnection('${conn.id}')" title="Delete connection">
+                                                                🗑
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function loadConnections() {
+            try {
+                const connections = localStorage.getItem('mimicConnections');
+                return connections ? JSON.parse(connections) : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function saveConnections(connections) {
+            localStorage.setItem('mimicConnections', JSON.stringify(connections));
+        }
+
+        function showAddConnectionModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Select Platform</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-backdrop').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="color: var(--gray-600); margin-bottom: 24px; text-align: center;">
+                            Choose which platform you want to connect to
+                        </p>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px;">
+                            <!-- Asana Card -->
+                            <div class="platform-card" onclick="showPlatformConnectionForm('asana')" style="cursor: pointer; padding: 24px; border: 2px solid var(--gray-200); border-radius: 12px; text-align: center; transition: all 0.2s; background: white;">
+                                <div style="width: 64px; height: 64px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: #F06A6A15; border-radius: 12px; padding: 12px;">
+                                    <img src="https://cdn.worldvectorlogo.com/logos/asana-logo.svg" alt="Asana" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <span style="display: none; font-size: 40px;">🎯</span>
+                                </div>
+                                <div style="font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">Asana</div>
+                                <div style="font-size: 12px; color: var(--success); font-weight: 600;">Available</div>
+                            </div>
+
+                            <!-- Jira Card -->
+                            <div class="platform-card platform-card-disabled" style="cursor: not-allowed; padding: 24px; border: 2px solid var(--gray-200); border-radius: 12px; text-align: center; opacity: 0.5; background: var(--gray-50);">
+                                <div style="width: 64px; height: 64px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: #0052CC15; border-radius: 12px; padding: 12px;">
+                                    <img src="https://cdn.worldvectorlogo.com/logos/jira-1.svg" alt="Jira" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <span style="display: none; font-size: 40px;">🔷</span>
+                                </div>
+                                <div style="font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">Jira</div>
+                                <div style="font-size: 12px; color: var(--gray-500); font-weight: 600;">Coming Soon</div>
+                            </div>
+
+                            <!-- Monday.com Card -->
+                            <div class="platform-card platform-card-disabled" style="cursor: not-allowed; padding: 24px; border: 2px solid var(--gray-200); border-radius: 12px; text-align: center; opacity: 0.5; background: var(--gray-50);">
+                                <div style="width: 64px; height: 64px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: #FF3D5715; border-radius: 12px; padding: 12px;">
+                                    <img src="https://cdn.worldvectorlogo.com/logos/monday-logo.svg" alt="Monday.com" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <span style="display: none; font-size: 40px;">📅</span>
+                                </div>
+                                <div style="font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">Monday.com</div>
+                                <div style="font-size: 12px; color: var(--gray-500); font-weight: 600;">Coming Soon</div>
+                            </div>
+
+                            <!-- ClickUp Card -->
+                            <div class="platform-card platform-card-disabled" style="cursor: not-allowed; padding: 24px; border: 2px solid var(--gray-200); border-radius: 12px; text-align: center; opacity: 0.5; background: var(--gray-50);">
+                                <div style="width: 64px; height: 64px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: #7B68EE15; border-radius: 12px; padding: 12px;">
+                                    <img src="https://cdn.worldvectorlogo.com/logos/clickup-logo.svg" alt="ClickUp" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <span style="display: none; font-size: 40px;">⬆️</span>
+                                </div>
+                                <div style="font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">ClickUp</div>
+                                <div style="font-size: 12px; color: var(--gray-500); font-weight: 600;">Coming Soon</div>
+                            </div>
+
+                            <!-- Trello Card -->
+                            <div class="platform-card platform-card-disabled" style="cursor: not-allowed; padding: 24px; border: 2px solid var(--gray-200); border-radius: 12px; text-align: center; opacity: 0.5; background: var(--gray-50);">
+                                <div style="width: 64px; height: 64px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: #0079BF15; border-radius: 12px; padding: 12px;">
+                                    <img src="https://cdn.worldvectorlogo.com/logos/trello.svg" alt="Trello" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <span style="display: none; font-size: 40px;">📋</span>
+                                </div>
+                                <div style="font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">Trello</div>
+                                <div style="font-size: 12px; color: var(--gray-500); font-weight: 600;">Coming Soon</div>
+                            </div>
+
+                            <!-- Linear Card -->
+                            <div class="platform-card platform-card-disabled" style="cursor: not-allowed; padding: 24px; border: 2px solid var(--gray-200); border-radius: 12px; text-align: center; opacity: 0.5; background: var(--gray-50);">
+                                <div style="width: 64px; height: 64px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: #5E6AD215; border-radius: 12px; padding: 12px;">
+                                    <img src="https://asset.brandfetch.io/idZAyF9rlg/idm22YDjHa.svg" alt="Linear" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <span style="display: none; font-size: 40px;">📐</span>
+                                </div>
+                                <div style="font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">Linear</div>
+                                <div style="font-size: 12px; color: var(--gray-500); font-weight: 600;">Coming Soon</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    .platform-card:not(.platform-card-disabled):hover {
+                        border-color: var(--primary);
+                        transform: translateY(-2px);
+                        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+                    }
+                </style>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function showPlatformConnectionForm(platform) {
+            // Remove the catalog modal
+            document.querySelector('.modal-backdrop').remove();
+
+            // Show platform-specific form
+            if (platform === 'asana') {
+                showAsanaConnectionForm();
+            }
+            // Add more platforms here in the future
+        }
+
+        function showAsanaConnectionForm() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 class="modal-title">
+                            <span style="font-size: 24px; margin-right: 8px;">🎯</span>
+                            Connect Asana Workspace
+                        </h2>
+                        <button class="modal-close" onclick="this.closest('.modal-backdrop').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="connectionForm" onsubmit="saveConnection(event, 'asana')">
+                            <div class="form-group">
+                                <label>Connection Name
+                                    <div class="label-description">A friendly name to identify this workspace</div>
+                                </label>
+                                <input type="text" id="connName" placeholder="e.g. Production Workspace" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Workspace GID
+                                    <div class="label-description">Find in URL: app.asana.com/0/{WORKSPACE_GID}/...</div>
+                                </label>
+                                <input type="text" id="connWorkspaceGid" placeholder="1234567890" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>User API Tokens
+                                    <div class="label-description">Add 2-3+ user tokens for multi-user simulation. Get tokens at app.asana.com/0/my-apps</div>
+                                </label>
+                                <div class="user-tokens-container" id="connUserTokensContainer">
+                                    <div class="user-token-item">
+                                        <input type="text" placeholder="User name (e.g. Alice)" class="conn-user-name" required>
+                                        <input type="password" placeholder="Asana Personal Access Token" class="conn-user-token" required>
+                                        <button type="button" class="remove-user-btn" onclick="removeConnUserToken(this)">×</button>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-secondary" style="margin-top: 12px;" onclick="addConnUserToken()">+ Add Another User</button>
+                            </div>
+
+                            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="this.closest('.modal-backdrop').remove(); showAddConnectionModal();">
+                                    ← Back
+                                </button>
+                                <button type="submit" class="btn btn-primary" style="flex: 2;">
+                                    💾 Save Connection
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function addConnUserToken() {
+            const container = document.getElementById('connUserTokensContainer');
+            const newItem = document.createElement('div');
+            newItem.className = 'user-token-item';
+            newItem.innerHTML = `
+                <input type="text" placeholder="User name (e.g. Bob)" class="conn-user-name" required>
+                <input type="password" placeholder="Asana Personal Access Token" class="conn-user-token" required>
+                <button type="button" class="remove-user-btn" onclick="removeConnUserToken(this)">×</button>
+            `;
+            container.appendChild(newItem);
+        }
+
+        function removeConnUserToken(button) {
+            const container = document.getElementById('connUserTokensContainer');
+            if (container.children.length > 1) {
+                button.parentElement.remove();
+            } else {
+                showToast('You must have at least one user token', 'error');
+            }
+        }
+
+        function saveConnection(e, vendor) {
+            e.preventDefault();
+
+            const name = document.getElementById('connName').value.trim();
+            const workspaceGid = document.getElementById('connWorkspaceGid').value.trim();
+
+            // Gather users
+            const users = [];
+            document.querySelectorAll('#connUserTokensContainer .user-token-item').forEach(item => {
+                const userName = item.querySelector('.conn-user-name').value.trim();
+                const userToken = item.querySelector('.conn-user-token').value.trim();
+                if (userName && userToken) {
+                    users.push({ name: userName, token: userToken });
+                }
+            });
+
+            if (users.length === 0) {
+                showToast('Please add at least one user with an API token', 'error');
+                return;
+            }
+
+            // Load connections and add new one
+            const connections = loadConnections();
+            const newConnection = {
+                id: Date.now().toString(),
+                name,
+                vendor: vendor || 'asana', // Default to asana
+                workspaceGid,
+                users,
+                createdAt: new Date().toISOString()
+            };
+
+            connections.push(newConnection);
+            saveConnections(connections);
+
+            showToast('Connection saved successfully!', 'success');
+            document.querySelector('.modal-backdrop').remove();
+            renderConnections();
+        }
+
+        function editConnection(connectionId) {
+            const connections = loadConnections();
+            const connection = connections.find(c => c.id === connectionId);
+
+            if (!connection) {
+                showToast('Connection not found', 'error');
+                return;
+            }
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Edit Connection</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-backdrop').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editConnectionForm" onsubmit="updateConnection(event, '${connectionId}')">
+                            <div class="form-group">
+                                <label>Connection Name
+                                    <div class="label-description">A friendly name to identify this workspace</div>
+                                </label>
+                                <input type="text" id="editConnName" value="${connection.name}" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>SaaS Platform
+                                    <div class="label-description">Select which platform this connection is for</div>
+                                </label>
+                                <select id="editConnVendor">
+                                    <option value="asana" ${connection.vendor === 'asana' ? 'selected' : ''}>Asana</option>
+                                    <option value="jira" disabled>Jira (Coming Soon)</option>
+                                    <option value="monday" disabled>Monday.com (Coming Soon)</option>
+                                    <option value="clickup" disabled>ClickUp (Coming Soon)</option>
+                                    <option value="trello" disabled>Trello (Coming Soon)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Workspace GID
+                                    <div class="label-description">Find in URL: app.asana.com/0/{WORKSPACE_GID}/...</div>
+                                </label>
+                                <input type="text" id="editConnWorkspaceGid" value="${connection.workspaceGid}" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>User API Tokens
+                                    <div class="label-description">Add 2-3+ user tokens for multi-user simulation</div>
+                                </label>
+                                <div class="user-tokens-container" id="editConnUserTokensContainer">
+                                    ${connection.users.map(user => `
+                                        <div class="user-token-item">
+                                            <input type="text" placeholder="User name" class="edit-conn-user-name" value="${user.name}" required>
+                                            <input type="password" placeholder="Asana Personal Access Token" class="edit-conn-user-token" value="${user.token}" required>
+                                            <button type="button" class="remove-user-btn" onclick="removeEditConnUserToken(this)">×</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <button type="button" class="btn btn-secondary" style="margin-top: 12px;" onclick="addEditConnUserToken()">+ Add Another User</button>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">
+                                💾 Update Connection
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function addEditConnUserToken() {
+            const container = document.getElementById('editConnUserTokensContainer');
+            const newItem = document.createElement('div');
+            newItem.className = 'user-token-item';
+            newItem.innerHTML = `
+                <input type="text" placeholder="User name" class="edit-conn-user-name" required>
+                <input type="password" placeholder="Asana Personal Access Token" class="edit-conn-user-token" required>
+                <button type="button" class="remove-user-btn" onclick="removeEditConnUserToken(this)">×</button>
+            `;
+            container.appendChild(newItem);
+        }
+
+        function removeEditConnUserToken(button) {
+            const container = document.getElementById('editConnUserTokensContainer');
+            if (container.children.length > 1) {
+                button.parentElement.remove();
+            } else {
+                showToast('You must have at least one user token', 'error');
+            }
+        }
+
+        function updateConnection(e, connectionId) {
+            e.preventDefault();
+
+            const name = document.getElementById('editConnName').value.trim();
+            const vendor = document.getElementById('editConnVendor').value;
+            const workspaceGid = document.getElementById('editConnWorkspaceGid').value.trim();
+
+            // Gather users
+            const users = [];
+            document.querySelectorAll('#editConnUserTokensContainer .user-token-item').forEach(item => {
+                const userName = item.querySelector('.edit-conn-user-name').value.trim();
+                const userToken = item.querySelector('.edit-conn-user-token').value.trim();
+                if (userName && userToken) {
+                    users.push({ name: userName, token: userToken });
+                }
+            });
+
+            if (users.length === 0) {
+                showToast('Please add at least one user with an API token', 'error');
+                return;
+            }
+
+            // Update connection
+            const connections = loadConnections();
+            const index = connections.findIndex(c => c.id === connectionId);
+
+            if (index !== -1) {
+                connections[index] = {
+                    ...connections[index],
+                    name,
+                    vendor,
+                    workspaceGid,
+                    users,
+                    updatedAt: new Date().toISOString()
+                };
+
+                saveConnections(connections);
+                showToast('Connection updated successfully!', 'success');
+                document.querySelector('.modal-backdrop').remove();
+                renderConnections();
+            } else {
+                showToast('Connection not found', 'error');
+            }
+        }
+
+        function deleteConnection(connectionId) {
+            if (!confirm('Delete this connection? This will not affect any running jobs.')) {
+                return;
+            }
+
+            const connections = loadConnections();
+            const filtered = connections.filter(c => c.id !== connectionId);
+
+            saveConnections(filtered);
+            showToast('Connection deleted', 'success');
+            renderConnections();
+        }
+
+        async function cleanWorkspace(connectionId, workspaceGid) {
+            const connections = loadConnections();
+            const connection = connections.find(c => c.id === connectionId);
+
+            if (!connection) {
+                showToast('Connection not found', 'error');
+                return;
+            }
+
+            // Show confirmation modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Clean Workspace</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-backdrop').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                            <div style="display: flex; gap: 12px; align-items: start;">
+                                <span style="font-size: 24px;">⚠️</span>
+                                <div>
+                                    <div style="font-weight: 600; color: #92400E; margin-bottom: 4px;">Warning: This action cannot be undone</div>
+                                    <div style="color: #92400E; font-size: 14px; line-height: 1.5;">
+                                        This will <strong>permanently delete</strong> all projects, tasks, subtasks, portfolios, custom fields, and tags created by your jobs in this workspace.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 20px;">
+                            <div style="font-weight: 600; margin-bottom: 8px; color: var(--gray-900);">Workspace: ${connection.name}</div>
+                            <div style="font-family: monospace; font-size: 13px; color: var(--gray-600); background: var(--gray-50); padding: 8px; border-radius: 4px;">
+                                ${workspaceGid}
+                            </div>
+                        </div>
+
+                        <div id="cleanupProgress" style="display: none; margin-top: 20px;">
+                            <div style="font-weight: 600; margin-bottom: 12px; color: var(--gray-900);">Cleaning workspace...</div>
+                            <div style="background: var(--gray-100); border-radius: 8px; height: 8px; overflow: hidden; margin-bottom: 12px;">
+                                <div id="cleanupProgressBar" style="background: var(--primary); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                            <div id="cleanupStatus" style="font-size: 13px; color: var(--gray-600);"></div>
+                        </div>
+
+                        <div id="cleanupResult" style="display: none; margin-top: 20px;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-backdrop').remove()">Cancel</button>
+                        <button id="confirmCleanupBtn" class="btn btn-error" onclick="executeCleanup('${connectionId}')">Clean Workspace</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        async function executeCleanup(connectionId) {
+            const modal = document.querySelector('.modal-backdrop');
+            const confirmBtn = document.getElementById('confirmCleanupBtn');
+            const cancelBtn = modal.querySelector('.btn-secondary');
+            const progressDiv = document.getElementById('cleanupProgress');
+            const resultDiv = document.getElementById('cleanupResult');
+            const statusDiv = document.getElementById('cleanupStatus');
+            const progressBar = document.getElementById('cleanupProgressBar');
+
+            // Disable buttons and show progress
+            confirmBtn.disabled = true;
+            cancelBtn.disabled = true;
+            confirmBtn.textContent = 'Cleaning...';
+            progressDiv.style.display = 'block';
+
+            try {
+                const connections = loadConnections();
+                const connection = connections.find(c => c.id === connectionId);
+                const workspaceGid = connection.workspaceGid;
+
+                // Phase 1: Discovering objects
+                statusDiv.innerHTML = `
+                    <div style="font-weight: 600; margin-bottom: 4px;">Phase 1: Discovering workspace objects...</div>
+                    <div style="color: var(--gray-500);">Querying Asana API for all objects in workspace</div>
+                `;
+                progressBar.style.width = '10%';
+
+                // Call workspace cleanup endpoint
+                const cleanupResponse = await fetch(`${API_BASE}/workspace/${workspaceGid}/cleanup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_tokens: connection.users
+                    })
+                });
+
+                // Update to deletion phase
+                statusDiv.innerHTML = `
+                    <div style="font-weight: 600; margin-bottom: 4px;">Phase 2: Deleting objects...</div>
+                    <div style="color: var(--gray-500);">Processing deletion in bottom-up order (subtasks → tasks → projects → workspace objects)</div>
+                `;
+                progressBar.style.width = '50%';
+
+                const cleanupData = await cleanupResponse.json();
+
+                if (!cleanupData.success) {
+                    throw new Error(cleanupData.error || 'Cleanup failed');
+                }
+
+                // Completion
+                progressBar.style.width = '100%';
+
+                // Show success result with detailed breakdown
+                progressDiv.style.display = 'none';
+                resultDiv.innerHTML = `
+                    <div style="background: var(--success-bg); border: 1px solid var(--success); border-radius: 8px; padding: 16px;">
+                        <div style="display: flex; gap: 12px; align-items: start;">
+                            <span style="font-size: 24px;">✅</span>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--success-dark); margin-bottom: 12px;">Workspace cleaned successfully!</div>
+                                <div style="color: var(--success-dark); font-size: 14px; line-height: 1.8;">
+                                    <div style="font-weight: 600; margin-bottom: 4px;">Deleted Objects:</div>
+                                    <div>• ${cleanupData.deleted_subtasks || 0} subtask${(cleanupData.deleted_subtasks || 0) !== 1 ? 's' : ''}</div>
+                                    <div>• ${cleanupData.deleted_tasks || 0} task${(cleanupData.deleted_tasks || 0) !== 1 ? 's' : ''}</div>
+                                    <div>• ${cleanupData.deleted_projects || 0} project${(cleanupData.deleted_projects || 0) !== 1 ? 's' : ''}</div>
+                                    <div>• ${cleanupData.deleted_portfolios || 0} portfolio${(cleanupData.deleted_portfolios || 0) !== 1 ? 's' : ''}</div>
+                                    <div>• ${cleanupData.deleted_custom_fields || 0} custom field${(cleanupData.deleted_custom_fields || 0) !== 1 ? 's' : ''}</div>
+                                    <div>• ${cleanupData.deleted_tags || 0} tag${(cleanupData.deleted_tags || 0) !== 1 ? 's' : ''}</div>
+                                </div>
+                                ${cleanupData.failed_items && cleanupData.failed_items.length > 0 ? `
+                                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--success);">
+                                        <div style="font-weight: 600; color: #D97706; margin-bottom: 4px;">⚠️ ${cleanupData.failed_items.length} item(s) could not be deleted</div>
+                                        <div style="color: var(--gray-600); font-size: 13px;">Some items may have permission restrictions</div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+                confirmBtn.style.display = 'none';
+                cancelBtn.textContent = 'Close';
+                cancelBtn.disabled = false;
+
+                showToast('Workspace cleaned successfully', 'success');
+
+            } catch (error) {
+                progressDiv.style.display = 'none';
+                resultDiv.innerHTML = `
+                    <div style="background: #FEE; border: 1px solid var(--error); border-radius: 8px; padding: 16px;">
+                        <div style="display: flex; gap: 12px; align-items: start;">
+                            <span style="font-size: 24px;">❌</span>
+                            <div>
+                                <div style="font-weight: 600; color: var(--error); margin-bottom: 4px;">Cleanup failed</div>
+                                <div style="color: var(--error); font-size: 14px;">${error.message}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Clean Workspace';
+                cancelBtn.disabled = false;
+
+                showToast(`Cleanup failed: ${error.message}`, 'error');
+            }
+        }
+
+        function loadSettings() {
+            try {
+                const settings = localStorage.getItem('mimicSettings');
+                return settings ? JSON.parse(settings) : {};
+            } catch {
+                return {};
+            }
+        }
+
+        function saveSettings(e) {
+            e.preventDefault();
+
+            const settings = {
+                anthropicKey: document.getElementById('settingsAnthropicKey').value.trim()
+            };
+
+            localStorage.setItem('mimicSettings', JSON.stringify(settings));
+            showToast('Settings saved successfully!', 'success');
+        }
+
+        async function refreshData() {
+            await loadView(currentView);
+            showToast('Data refreshed', 'success');
+        }
+
+        function showNewJobModal() {
+            // Check if there are any connections
+            const connections = loadConnections();
+            if (connections.length === 0) {
+                showToast('Please add a connection first', 'error');
+                // Navigate to connections
+                document.querySelector('.nav-item[data-view="connections"]').click();
+                return;
+            }
+
+            // Check if Anthropic API key is configured
+            const settings = loadSettings();
+            if (!settings.anthropicKey) {
+                showToast('Please configure your Anthropic API key in Settings first', 'error');
+                // Navigate to settings
+                document.querySelector('.nav-item[data-view="settings"]').click();
+                return;
+            }
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Create New Job</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-backdrop').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="newJobForm" onsubmit="createJob(event)">
+                            <div class="form-group">
+                                <label>Connection
+                                    <div class="label-description">Select which workspace connection to use</div>
+                                </label>
+                                <select id="connectionSelect" required onchange="updateConnectionInfo()">
+                                    <option value="">-- Select a connection --</option>
+                                    ${connections.map(conn => `
+                                        <option value="${conn.id}">${conn.name} (${conn.vendor.charAt(0).toUpperCase() + conn.vendor.slice(1)} - ${conn.users.length} users)</option>
+                                    `).join('')}
+                                </select>
+                                <div id="connectionInfo" style="display: none; margin-top: 12px; padding: 12px; background: var(--gray-50); border-radius: 8px; font-size: 13px; color: var(--gray-700);">
+                                    <!-- Connection details will appear here -->
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="jobName">Job Name
+                                    <div class="label-description">Give this job a friendly name for easy identification</div>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="jobName"
+                                    placeholder="e.g., Q4 Product Launch Demo, Healthcare Migration Test"
+                                    maxlength="100"
+                                />
+                            </div>
+
+                            <div class="form-group">
+                                <label>Industry Theme
+                                    <div class="label-description">AI will generate contextually relevant content</div>
+                                </label>
+                                <div class="industry-grid" id="industryGrid">
+                                    <div class="industry-option" data-industry="finance">Finance</div>
+                                    <div class="industry-option" data-industry="healthcare">Healthcare</div>
+                                    <div class="industry-option" data-industry="manufacturing">Manufacturing</div>
+                                    <div class="industry-option" data-industry="travel">Travel</div>
+                                    <div class="industry-option selected" data-industry="technology">Technology</div>
+                                    <div class="industry-option" data-industry="retail">Retail</div>
+                                    <div class="industry-option" data-industry="education">Education</div>
+                                    <div class="industry-option" data-industry="government">Government</div>
+                                    <div class="industry-option" data-industry="energy">Energy</div>
+                                    <div class="industry-option" data-industry="media">Media</div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Duration</label>
+                                <select id="durationType">
+                                    <option value="7">7 days</option>
+                                    <option value="14">14 days</option>
+                                    <option value="30">30 days</option>
+                                    <option value="indefinite">Indefinite (until stopped)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Data Volume
+                                    <div class="label-description">Amount of data to generate (projects, tasks, comments, etc.)</div>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 16px; padding: 12px 0;">
+                                    <span style="font-size: 13px; color: var(--gray-600); min-width: 50px;">Light</span>
+                                    <input type="range" id="dataVolumeSlider" min="1" max="3" value="2" step="1"
+                                           style="flex: 1; height: 6px; cursor: pointer;"
+                                           oninput="updateDataVolumeDisplay(this.value)"
+                                           onchange="updateDataVolumePresets(this.value)">
+                                    <span style="font-size: 13px; color: var(--gray-600); min-width: 50px; text-align: right;">Heavy</span>
+                                </div>
+                                <div id="dataVolumeLabel" style="text-align: center; font-size: 14px; font-weight: 600; color: var(--primary); margin-top: 8px;">
+                                    Medium
+                                </div>
+                                <div style="margin-top: 12px; padding: 12px; background: var(--gray-50); border-radius: 8px; font-size: 12px; color: var(--gray-600);">
+                                    <div id="dataVolumeDescription">
+                                        Balanced data generation with realistic project and task counts
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Advanced Options -->
+                            <div style="margin: 24px 0; padding-top: 20px; border-top: 1px solid var(--gray-200);">
+                                <div onclick="toggleAdvancedOptions()" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background='transparent'">
+                                    <span id="advancedChevron" style="transition: transform 0.2s; color: var(--gray-600);">▶</span>
+                                    <span style="font-weight: 600; color: var(--gray-700);">Advanced Options</span>
+                                    <span style="font-size: 12px; color: var(--gray-500); margin-left: auto;">Optional configuration</span>
+                                </div>
+
+                                <div id="advancedOptions" style="display: none; padding: 16px 0;">
+                                    <div class="form-group">
+                                        <label>Initial Projects
+                                            <div class="label-description">Number of projects to create when starting</div>
+                                        </label>
+                                        <input type="number" id="initialProjects" value="3" min="1" max="10">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Activity Level
+                                            <div class="label-description">Controls how frequently activity is generated</div>
+                                        </label>
+                                        <select id="activityLevel">
+                                            <option value="low">Low - Sparse activity (~30% of medium)</option>
+                                            <option value="medium" selected>Medium - Balanced, realistic activity</option>
+                                            <option value="high">High - Very active team (~200% of medium)</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Working Hours Pattern
+                                            <div class="label-description">When activity should occur</div>
+                                        </label>
+                                        <select id="workingHours">
+                                            <option value="us_workforce" selected>US Workforce (9am-6pm PT, Mon-Fri)</option>
+                                            <option value="global">Global (24-hour coverage across timezones)</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Activity Pattern
+                                            <div class="label-description">How activity is distributed throughout the day</div>
+                                        </label>
+                                        <select id="burstFactor">
+                                            <option value="0">Bursty (peaks at 9am, 1pm, 4pm)</option>
+                                            <option value="0.3">Mostly Bursty</option>
+                                            <option value="0.5" selected>Balanced</option>
+                                            <option value="0.7">Mostly Steady</option>
+                                            <option value="1">Steady (even throughout day)</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Task Completion Rate (% per week)
+                                            <div class="label-description">What percentage of tasks get completed each week</div>
+                                        </label>
+                                        <input type="number" id="completionRate" value="20" min="0" max="100">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Blocked Task Frequency (%)
+                                            <div class="label-description">Percentage of tasks that become blocked</div>
+                                        </label>
+                                        <input type="number" id="blockedFrequency" value="15" min="0" max="100">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Average Blocked Duration (days)
+                                            <div class="label-description">How long tasks stay blocked before unblocking</div>
+                                        </label>
+                                        <input type="number" id="blockedDuration" value="2" min="1" max="30">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Comment Frequency (per task per day)
+                                            <div class="label-description">Average number of comments per task per day</div>
+                                        </label>
+                                        <input type="number" id="commentFrequency" value="0.5" min="0" max="10" step="0.1">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>New Project Frequency (days)
+                                            <div class="label-description">Create new project every X days</div>
+                                        </label>
+                                        <input type="number" id="projectFrequency" value="14" min="1" max="90">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">
+                                🚀 Start Continuous Generation
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Initialize industry selection
+            document.querySelectorAll('.industry-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.industry-option').forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedIndustry = this.dataset.industry;
+                    updateScenarios(this.dataset.industry);
+                });
+            });
+
+            // CRITICAL FIX: Set selectedIndustry to match the initially selected button
+            // Without this, selectedIndustry retains the value from the previous modal open
+            const initiallySelected = document.querySelector('.industry-option.selected');
+            if (initiallySelected) {
+                selectedIndustry = initiallySelected.dataset.industry;
+            }
+
+            // Scenario selection removed - system will automatically cycle through all scenarios
+        }
+
+        // Industry use cases mapping
+        const INDUSTRY_SCENARIOS = {
+            healthcare: [
+                { value: 'EMR System Migration', description: 'Electronic Medical Records system upgrade and data migration' },
+                { value: 'New Hospital Wing Construction', description: 'Construction and setup of new patient care facility' },
+                { value: 'Clinical Trial Management', description: 'Multi-site clinical research trial coordination' }
+            ],
+            technology: [
+                { value: 'Q4 Product Launch', description: 'Major product release with new features and infrastructure' },
+                { value: 'Cloud Infrastructure Migration', description: 'Migration from on-premise to cloud infrastructure' },
+                { value: 'API Platform Rollout', description: 'New developer API platform and ecosystem' }
+            ],
+            financial_services: [
+                { value: 'SOX Compliance Audit Preparation', description: 'Annual Sarbanes-Oxley compliance audit and remediation' },
+                { value: 'New Banking Product Launch', description: 'Launch of new consumer banking product' },
+                { value: 'Fraud Detection System Upgrade', description: 'AI-powered fraud detection implementation' }
+            ],
+            retail: [
+                { value: 'Holiday Season Campaign', description: 'Black Friday and holiday season marketing campaign' },
+                { value: 'Store Expansion Project', description: 'New retail location opening' },
+                { value: 'Inventory Management System', description: 'New inventory and supply chain platform implementation' }
+            ],
+            construction: [
+                { value: 'Commercial Building Development', description: 'Multi-tenant office building construction' },
+                { value: 'Infrastructure Renovation', description: 'Major renovation of existing commercial property' }
+            ],
+            travel: [
+                { value: 'Airport Expansion Project', description: 'Major airport terminal and runway expansion' },
+                { value: 'Fleet Modernization Program', description: 'Airline fleet upgrade and aircraft acquisition' },
+                { value: 'Hotel Property Opening', description: 'New hotel location launch' }
+            ],
+            manufacturing: [
+                { value: 'Factory Automation Initiative', description: 'Implementation of robotics and automation systems' },
+                { value: 'Quality Management System Certification', description: 'ISO 9001 certification and quality system overhaul' },
+                { value: 'Supply Chain Optimization', description: 'End-to-end supply chain and logistics optimization' }
+            ],
+            education: [
+                { value: 'Learning Management System Rollout', description: 'New LMS platform implementation across campus' },
+                { value: 'Campus Facilities Expansion', description: 'New academic building construction and renovation' },
+                { value: 'Accreditation Preparation', description: 'Multi-year accreditation review and compliance project' }
+            ],
+            government: [
+                { value: 'Digital Services Transformation', description: 'Modernization of citizen-facing digital services' },
+                { value: 'Infrastructure Improvement Project', description: 'Public infrastructure upgrade and maintenance' },
+                { value: 'Emergency Response System Upgrade', description: 'Emergency services technology modernization' }
+            ],
+            energy: [
+                { value: 'Smart Grid Implementation', description: 'Smart meter and grid modernization deployment' },
+                { value: 'Renewable Energy Integration', description: 'Solar/wind farm development and grid integration' },
+                { value: 'Pipeline Integrity Management', description: 'Pipeline inspection, maintenance, and safety program' }
+            ],
+            media: [
+                { value: 'Content Production Campaign', description: 'Multi-platform content series production and launch' },
+                { value: 'Streaming Platform Launch', description: 'New OTT streaming service launch' },
+                { value: 'Live Event Production', description: 'Large-scale live event broadcast and production' }
+            ],
+            // Legacy mapping for old 'finance' industry name
+            finance: []
+        };
+
+        function updateScenarios(industry) {
+            const scenarioSelect = document.getElementById('scenarioSelect');
+            const scenarioDescription = document.getElementById('scenarioDescription');
+
+            // Map legacy industry names to new names
+            const industryMap = {
+                'finance': 'financial_services'
+            };
+            const mappedIndustry = industryMap[industry] || industry;
+
+            const scenarios = INDUSTRY_SCENARIOS[mappedIndustry] || [];
+
+            // Clear existing options
+            scenarioSelect.innerHTML = '<option value="">-- Select a scenario --</option>';
+            scenarioDescription.style.display = 'none';
+
+            if (scenarios.length > 0) {
+                // Add scenario options
+                scenarios.forEach(scenario => {
+                    const option = document.createElement('option');
+                    option.value = scenario.value;
+                    option.textContent = scenario.value;
+                    option.dataset.description = scenario.description;
+                    scenarioSelect.appendChild(option);
+                });
+
+                // Select first scenario by default
+                scenarioSelect.selectedIndex = 1;
+                updateScenarioDescription(scenarios[0].value);
+            } else {
+                // No specific scenarios - add a generic option
+                const option = document.createElement('option');
+                option.value = 'random';
+                option.textContent = 'Random Project (Legacy Mode)';
+                option.dataset.description = 'AI will generate a random project for this industry';
+                scenarioSelect.appendChild(option);
+                scenarioSelect.selectedIndex = 1;
+                updateScenarioDescription('random');
+            }
+        }
+
+        function updateScenarioDescription(scenarioValue) {
+            const scenarioSelect = document.getElementById('scenarioSelect');
+            const scenarioDescription = document.getElementById('scenarioDescription');
+
+            if (!scenarioValue) {
+                scenarioDescription.style.display = 'none';
+                return;
+            }
+
+            const selectedOption = scenarioSelect.options[scenarioSelect.selectedIndex];
+            if (selectedOption && selectedOption.dataset.description) {
+                scenarioDescription.style.display = 'block';
+                scenarioDescription.textContent = selectedOption.dataset.description;
+            } else {
+                scenarioDescription.style.display = 'none';
+            }
+        }
+
+        function updateConnectionInfo() {
+            const connectionId = document.getElementById('connectionSelect').value;
+            const infoDiv = document.getElementById('connectionInfo');
+
+            if (!connectionId) {
+                infoDiv.style.display = 'none';
+                return;
+            }
+
+            const connections = loadConnections();
+            const connection = connections.find(c => c.id === connectionId);
+
+            if (connection) {
+                infoDiv.style.display = 'block';
+                infoDiv.innerHTML = `
+                    <div style="margin-bottom: 8px;"><strong>Platform:</strong> ${connection.vendor.charAt(0).toUpperCase() + connection.vendor.slice(1)}</div>
+                    <div style="margin-bottom: 8px;"><strong>Workspace:</strong> ${connection.workspaceGid}</div>
+                    <div><strong>Users:</strong> ${connection.users.map(u => u.name).join(', ')}</div>
+                `;
+            }
+        }
+
+        function updateVendorFields() {
+            const vendor = document.getElementById('vendorSelect').value;
+            // Currently only Asana is supported
+            // In the future, this function will show/hide vendor-specific fields
+            if (vendor !== 'asana') {
+                showToast('This platform is not yet supported. Only Asana is available.', 'error');
+            }
+        }
+
+        function toggleAdvancedOptions() {
+            const options = document.getElementById('advancedOptions');
+            const chevron = document.getElementById('advancedChevron');
+
+            if (options.style.display === 'none') {
+                options.style.display = 'block';
+                chevron.style.transform = 'rotate(90deg)';
+            } else {
+                options.style.display = 'none';
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function updateDataVolumeDisplay(value) {
+            const label = document.getElementById('dataVolumeLabel');
+            const description = document.getElementById('dataVolumeDescription');
+
+            const presets = {
+                '1': {
+                    name: 'Light',
+                    description: 'Minimal data generation - Good for testing and small demos (1-2 projects, few tasks)'
+                },
+                '2': {
+                    name: 'Medium',
+                    description: 'Balanced data generation with realistic project and task counts'
+                },
+                '3': {
+                    name: 'Heavy',
+                    description: 'Large-scale data generation - Comprehensive demos with many projects and activities'
+                }
+            };
+
+            label.textContent = presets[value].name;
+            description.textContent = presets[value].description;
+        }
+
+        function updateDataVolumePresets(value) {
+            // Preset configurations for each volume level
+            const presets = {
+                '1': {  // Light
+                    initialProjects: 1,
+                    activityLevel: 'low',
+                    completionRate: 10,
+                    blockedFrequency: 5,
+                    blockedDuration: 1,
+                    commentFrequency: 0.2,
+                    projectFrequency: 30
+                },
+                '2': {  // Medium (default)
+                    initialProjects: 3,
+                    activityLevel: 'medium',
+                    completionRate: 20,
+                    blockedFrequency: 15,
+                    blockedDuration: 2,
+                    commentFrequency: 0.5,
+                    projectFrequency: 14
+                },
+                '3': {  // Heavy
+                    initialProjects: 8,
+                    activityLevel: 'high',
+                    completionRate: 30,
+                    blockedFrequency: 20,
+                    blockedDuration: 3,
+                    commentFrequency: 1.5,
+                    projectFrequency: 7
+                }
+            };
+
+            const preset = presets[value];
+
+            // Update all advanced option fields
+            document.getElementById('initialProjects').value = preset.initialProjects;
+            document.getElementById('activityLevel').value = preset.activityLevel;
+            document.getElementById('completionRate').value = preset.completionRate;
+            document.getElementById('blockedFrequency').value = preset.blockedFrequency;
+            document.getElementById('blockedDuration').value = preset.blockedDuration;
+            document.getElementById('commentFrequency').value = preset.commentFrequency;
+            document.getElementById('projectFrequency').value = preset.projectFrequency;
+        }
+
+        function addUserToken() {
+            const container = document.getElementById('userTokensContainer');
+            const newItem = document.createElement('div');
+            newItem.className = 'user-token-item';
+            newItem.innerHTML = `
+                <input type="text" placeholder="User name (e.g. Bob)" class="user-name" required>
+                <input type="password" placeholder="Asana Personal Access Token" class="user-token" required>
+                <button type="button" class="remove-user-btn" onclick="removeUserToken(this)">×</button>
+            `;
+            container.appendChild(newItem);
+        }
+
+        function removeUserToken(button) {
+            const container = document.getElementById('userTokensContainer');
+            if (container.children.length > 1) {
+                button.parentElement.remove();
+            } else {
+                showToast('You must have at least one user token', 'error');
+            }
+        }
+
+        async function createJob(e) {
+            e.preventDefault();
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Starting...';
+
+            try {
+                // Load settings
+                const settings = loadSettings();
+                if (!settings.anthropicKey) {
+                    throw new Error('Anthropic API key not configured. Please go to Settings.');
+                }
+
+                // Get selected connection
+                const connectionId = document.getElementById('connectionSelect').value;
+                if (!connectionId) {
+                    throw new Error('Please select a connection');
+                }
+
+                const connections = loadConnections();
+                const connection = connections.find(c => c.id === connectionId);
+
+                if (!connection) {
+                    throw new Error('Selected connection not found');
+                }
+
+                // Prepare user tokens from connection
+                const userTokens = connection.users.map(user => ({
+                    name: user.name,
+                    token: user.token
+                }));
+
+                const durationType = document.getElementById('durationType').value;
+
+                // Get advanced options (with defaults)
+                const getAdvancedValue = (id, defaultValue) => {
+                    const element = document.getElementById(id);
+                    return element ? element.value : defaultValue;
+                };
+
+                // Map legacy industry names to template names
+                const industryMap = {
+                    'finance': 'financial_services'
+                };
+                const mappedIndustry = industryMap[selectedIndustry] || selectedIndustry;
+
+                // Build configuration using connection and settings
+                const config = {
+                    vendor: connection.vendor,
+                    industry: mappedIndustry,
+                    // use_case_scenario removed - system will automatically cycle through all scenarios
+                    workspace_gid: connection.workspaceGid,
+                    workspace_name: connection.name || `${selectedIndustry.charAt(0).toUpperCase() + selectedIndustry.slice(1)} Demo`,
+                    job_name: document.getElementById('jobName').value.trim() || null,
+                    duration_days: durationType === 'indefinite' ? 'indefinite' : parseInt(durationType),
+                    initial_projects: parseInt(getAdvancedValue('initialProjects', 3)),
+                    activity_level: getAdvancedValue('activityLevel', 'medium'),
+                    working_hours: getAdvancedValue('workingHours', 'us_workforce'),
+                    burst_factor: parseFloat(getAdvancedValue('burstFactor', 0.5)),
+                    task_completion_rate: parseInt(getAdvancedValue('completionRate', 20)),
+                    blocked_task_frequency: parseInt(getAdvancedValue('blockedFrequency', 15)),
+                    blocked_task_duration: parseInt(getAdvancedValue('blockedDuration', 2)),
+                    comment_frequency: parseFloat(getAdvancedValue('commentFrequency', 0.5)),
+                    new_project_frequency_days: parseInt(getAdvancedValue('projectFrequency', 14)),
+                    privacy: 'private',
+                    user_tokens: userTokens,
+                    anthropic_api_key: settings.anthropicKey
+                };
+
+                // Start job
+                const response = await fetch(`${API_BASE}/jobs/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(`Job created successfully! Job ID: ${data.job_id}`, 'success');
+                    document.querySelector('.modal-backdrop').remove();
+
+                    // Navigate to jobs view
+                    document.querySelector('.nav-item[data-view="jobs"]').click();
+                } else {
+                    throw new Error(data.error || 'Failed to start job');
+                }
+
+            } catch (error) {
+                showToast(`Error: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Start Continuous Generation';
+            }
+        }
+
+        async function pauseJob(jobId) {
+            if (!confirm('Pause this job?')) return;
+            await jobAction(jobId, 'pause');
+        }
+
+        async function resumeJob(jobId) {
+            await jobAction(jobId, 'resume');
+        }
+
+        async function stopJob(jobId) {
+            if (!confirm('Stop this job? You can resume it later to continue where it left off.')) return;
+            await jobAction(jobId, 'stop');
+        }
+
+        async function deleteJob(jobId) {
+            console.log('deleteJob called for job:', jobId);
+
+            // First confirmation - Do they want to cleanup Asana data?
+            const cleanupAsana = confirm(
+                'Do you want to delete ALL Asana data created by this job?\n\n' +
+                '• YES: Will delete all projects, tasks, and comments in Asana\n' +
+                '• NO: Will only delete the job record (Asana data remains)\n\n' +
+                'Click OK to DELETE Asana data, or Cancel to keep it.'
+            );
+
+            console.log('cleanupAsana:', cleanupAsana);
+
+            // Second confirmation - Final warning
+            if (!confirm(`⚠️ FINAL CONFIRMATION ⚠️\n\n${cleanupAsana ? 'This will PERMANENTLY DELETE all Asana data created by this job AND the job record.' : 'This will delete the job record only. Asana data will remain.'}\n\nThis action cannot be undone. Continue?`)) {
+                console.log('User cancelled final confirmation');
+                return;
+            }
+
+            try {
+                // If user wants to cleanup Asana data, do that first
+                if (cleanupAsana) {
+                    console.log('Starting cleanup...');
+                    showToast('Cleaning up Asana data... This may take a moment.', 'info');
+
+                    const cleanupResponse = await fetch(`${API_BASE}/jobs/${jobId}/cleanup`, {
+                        method: 'POST'
+                    });
+
+                    console.log('Cleanup response status:', cleanupResponse.status);
+
+                    let cleanupData;
+                    try {
+                        const cleanupText = await cleanupResponse.text();
+                        console.log('Cleanup response text:', cleanupText);
+                        cleanupData = JSON.parse(cleanupText);
+                    } catch (parseError) {
+                        console.error('Failed to parse cleanup response:', parseError);
+                        throw new Error('Invalid response from cleanup endpoint');
+                    }
+
+                    if (!cleanupData.success) {
+                        // Construct error message from failed_projects or use general error
+                        let errorMsg = cleanupData.error;
+                        if (!errorMsg && cleanupData.failed_projects && cleanupData.failed_projects.length > 0) {
+                            errorMsg = `Failed to delete ${cleanupData.failed_projects.length} project(s):\n`;
+                            errorMsg += cleanupData.failed_projects.map(p => `  • ${p.name || p.id}`).join('\n');
+                            errorMsg += '\n\n(Projects may have already been deleted)';
+                        }
+                        if (!errorMsg) {
+                            errorMsg = 'Unknown error during cleanup';
+                        }
+
+                        if (!confirm(`⚠️ Cleanup encountered errors:\n\n${errorMsg}\n\nDo you want to continue deleting the job anyway?`)) {
+                            console.log('User cancelled after cleanup error');
+                            return;
+                        }
+                    } else {
+                        showToast(`Cleanup complete: ${cleanupData.deleted_projects}/${cleanupData.total_projects} projects deleted`, 'success');
+
+                        // Check if any failures occurred
+                        if (cleanupData.failed_projects && cleanupData.failed_projects.length > 0) {
+                            const failedNames = cleanupData.failed_projects.map(p => p.name).join(', ');
+                            showToast(`⚠️ Failed to delete: ${failedNames}`, 'warning');
+                        }
+                    }
+                }
+
+                // Now delete the job record
+                console.log('Deleting job record...');
+                const deleteUrl = `${API_BASE}/jobs/${jobId}/delete`;
+                console.log('DELETE URL:', deleteUrl);
+
+                const response = await fetch(deleteUrl, {
+                    method: 'DELETE'
+                });
+
+                console.log('Delete response status:', response.status, 'ok:', response.ok);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Delete failed:', response.status, errorText);
+                    throw new Error(`Server returned ${response.status}: ${errorText || 'No error message'}`);
+                }
+
+                let data;
+                try {
+                    const responseText = await response.text();
+                    console.log('Delete response text:', responseText);
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('Failed to parse delete response:', parseError);
+                    throw new Error('Invalid response from delete endpoint');
+                }
+
+                console.log('Delete response data:', data);
+
+                if (data.success) {
+                    showToast('Job deleted successfully', 'success');
+                    refreshData();
+                } else {
+                    throw new Error(data.error || 'Failed to delete job');
+                }
+            } catch (error) {
+                console.error('Delete error (full):', error);
+                console.error('Error type:', typeof error);
+                console.error('Error message:', error?.message);
+                console.error('Error stack:', error?.stack);
+
+                const errorMessage = error?.message || (typeof error === 'string' ? error : 'Failed to delete job');
+                showToast(`Error: ${errorMessage}`, 'error');
+            }
+        }
+
+        async function jobAction(jobId, action) {
+            try {
+                const response = await fetch(`${API_BASE}/jobs/${jobId}/${action}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    // Properly format the past tense of the action
+                    const actionPastTense = action === 'stop' ? 'stopped' :
+                                          action === 'pause' ? 'paused' :
+                                          action === 'resume' ? 'resumed' :
+                                          `${action}ed`;
+                    showToast(`Job ${actionPastTense} successfully`, 'success');
+                    refreshData();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function generateNow(jobId) {
+            try {
+                showToast('Generating activity now...', 'info');
+                const response = await fetch(`${API_BASE}/jobs/${jobId}/generate-now`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('Activity generated successfully!', 'success');
+                    // Refresh after a short delay to show new activity
+                    setTimeout(() => refreshData(), 2000);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function viewActivityLog(jobId) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Activity Log - Job ${jobId}</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-backdrop').remove()">×</button>
+                    </div>
+                    <div class="modal-body" id="activityLogBody">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Loading activity log...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            try {
+                const response = await fetch(`${API_BASE}/jobs/${jobId}/activity_log?limit=100`);
+                const data = await response.json();
+
+                const logBody = document.getElementById('activityLogBody');
+
+                if (data.success && data.activities.length > 0) {
+                    let html = '<div class="activity-log">';
+
+                    data.activities.forEach(activity => {
+                        const timestamp = new Date(activity.timestamp);
+                        const {action, details, user} = formatActivity(activity);
+
+                        html += `
+                            <div class="activity-item">
+                                <div class="activity-time">${timestamp.toLocaleString()}</div>
+                                ${user ? `
+                                    <div class="activity-user">
+                                        <div class="activity-user-badge">${user}</div>
+                                    </div>
+                                ` : ''}
+                                <div class="activity-details">
+                                    <div class="activity-action">${action}</div>
+                                    <div class="activity-description">${details}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += '</div>';
+                    logBody.innerHTML = html;
+                } else {
+                    logBody.innerHTML = '<div class="empty-state"><div class="empty-state-text">No activity yet</div></div>';
+                }
+            } catch (error) {
+                document.getElementById('activityLogBody').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-text">Error: ${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ';
+
+            toast.innerHTML = `
+                <div class="toast-icon">${icon}</div>
+                <div class="toast-message">${message}</div>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        }
+
+        function formatScheduledTime(date) {
+            const now = new Date();
+            const diffMs = date - now;
+            const diffMins = Math.floor(diffMs / 1000 / 60);
+            const diffHours = Math.floor(diffMins / 60);
+            const diffDays = Math.floor(diffHours / 24);
+
+            let timeUntil = '';
+            if (diffMs < 0) {
+                timeUntil = 'Overdue - generating now';
+            } else if (diffMins < 1) {
+                timeUntil = 'Within 1 minute';
+            } else if (diffMins < 60) {
+                timeUntil = `in ${diffMins} minute${diffMins !== 1 ? 's' : ''}`;
+            } else if (diffHours < 24) {
+                timeUntil = `in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
+            } else {
+                timeUntil = `in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+            }
+
+            return `${date.toLocaleString()} (${timeUntil})`;
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                window.location.href = '/';
+            }
+        }
+    </script>
+</body>
+</html>

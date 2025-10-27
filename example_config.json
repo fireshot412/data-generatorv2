@@ -1,0 +1,72 @@
+{
+  "_comment": "Example configuration for Continuous Data Generation",
+  "_description": "This shows all available configuration options",
+
+  "industry": "healthcare",
+  "workspace_gid": "YOUR_WORKSPACE_GID_HERE",
+  "workspace_name": "My Demo Workspace",
+
+  "duration_days": 7,
+  "_duration_options": "Number of days or 'indefinite' for continuous running",
+
+  "initial_projects": 3,
+  "_initial_projects_desc": "Number of projects to create when starting",
+
+  "activity_level": "medium",
+  "_activity_level_options": ["low", "medium", "high"],
+
+  "working_hours": "us_workforce",
+  "_working_hours_options": ["us_workforce", "global"],
+  "_working_hours_desc": "us_workforce = 9am-6pm PT Mon-Fri, global = 24-hour coverage",
+
+  "burst_factor": 0.3,
+  "_burst_factor_desc": "0.0 = very bursty (concentrated at 9am, 1pm, 4pm), 1.0 = steady throughout day",
+
+  "comment_frequency": 0.5,
+  "_comment_frequency_desc": "Average comments per task per day (0.5 = 1 comment every 2 days)",
+
+  "task_completion_rate": 20,
+  "_task_completion_rate_desc": "Percentage of tasks completed per week",
+
+  "blocked_task_frequency": 15,
+  "_blocked_task_frequency_desc": "Percentage of tasks that become blocked",
+
+  "blocked_task_duration": 2,
+  "_blocked_task_duration_desc": "Average days tasks stay blocked",
+
+  "new_project_frequency_days": 14,
+  "_new_project_frequency_desc": "Days between creating new projects",
+
+  "privacy": "public",
+  "_privacy_options": ["public", "private"],
+
+  "user_tokens": [
+    {
+      "name": "Alice",
+      "token": "ASANA_TOKEN_ALICE"
+    },
+    {
+      "name": "Bob",
+      "token": "ASANA_TOKEN_BOB"
+    },
+    {
+      "name": "Charlie",
+      "token": "ASANA_TOKEN_CHARLIE"
+    }
+  ],
+
+  "anthropic_api_key": "YOUR_ANTHROPIC_API_KEY",
+
+  "_industry_options": [
+    "finance",
+    "healthcare",
+    "manufacturing",
+    "travel",
+    "technology",
+    "retail",
+    "education",
+    "government",
+    "energy",
+    "media"
+  ]
+}

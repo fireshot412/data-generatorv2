@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mimic - Realistic SaaS Data Generation</title>
+
+    <!-- Meta Tags for SEO and Social Sharing -->
+    <meta name="description" content="Making realistic SaaS data accessible to everyone - without building it yourself or compromising on quality. See how Mimic solves this problem.">
+    <meta property="og:title" content="Mimic - Realistic SaaS Data Generation">
+    <meta property="og:description" content="Making realistic SaaS data accessible to everyone - without building it yourself or compromising on quality.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Mimic - Realistic SaaS Data Generation">
+    <meta name="twitter:description" content="Making realistic SaaS data accessible to everyone - without building it yourself or compromising on quality.">
+
+    <!-- Preload critical fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="marketing-styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav id="nav" class="nav">
+        <div class="nav-container">
+            <a href="#hero" class="nav-logo">
+                <span class="logo-icon">◐</span>
+                <span class="logo-text">Mimic</span>
+            </a>
+            <div class="nav-links">
+                <a href="#mission" class="nav-link">Mission</a>
+                <a href="#personas" class="nav-link">Stories</a>
+                <a href="#solution" class="nav-link">Solution</a>
+                <a href="#contact" class="nav-link">Get Involved</a>
+                <button class="nav-login-btn" onclick="navigateToLogin()">Login</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Progress Indicator -->
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- Hero Section -->
+    <section id="hero" class="hero">
+        <div class="hero-container">
+            <div class="hero-left">
+                <p class="hero-eyebrow">For B2B SaaS Teams</p>
+                <h1 class="hero-headline">
+                    Stop wasting hours generating realistic SaaS data
+                </h1>
+                <p class="hero-subheadline">
+                    You need good data for demos, testing, and building integrations.<br>
+                    Generate production-scale environments in minutes, not hours.
+                </p>
+                <div class="hero-cta-buttons">
+                    <button class="hero-cta-primary" onclick="scrollToSection('solution')">See How It Works</button>
+                    <button class="hero-cta-secondary" onclick="scrollToSection('personas')">Read the Stories</button>
+                </div>
+            </div>
+            <div class="hero-right">
+                <div class="hero-visual">
+                    <svg class="data-flow-visual" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Empty state (sparse) -->
+                        <g class="empty-state">
+                            <rect x="20" y="80" width="160" height="240" rx="8" fill="#f8f9fa" stroke="#e0e0e0" stroke-width="2"/>
+                            <text x="100" y="110" font-size="14" fill="#6c757d" text-anchor="middle" font-weight="600">Empty Environment</text>
+                            <circle cx="100" cy="160" r="4" fill="#e0e0e0"/>
+                            <circle cx="100" cy="185" r="4" fill="#e0e0e0"/>
+                            <circle cx="100" cy="210" r="4" fill="#e0e0e0"/>
+                            <text x="100" y="255" font-size="12" fill="#6c757d" text-anchor="middle">10 items</text>
+                            <text x="100" y="275" font-size="11" fill="#999" text-anchor="middle">Hours of work</text>
+                        </g>
+
+                        <!-- Arrow animation -->
+                        <g class="transform-arrow">
+                            <path d="M 190 200 L 210 200" stroke="#6366F1" stroke-width="3" fill="none"/>
+                            <path d="M 205 195 L 210 200 L 205 205" stroke="#6366F1" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        </g>
+
+                        <!-- Populated state (rich) -->
+                        <g class="populated-state">
+                            <rect x="220" y="80" width="160" height="240" rx="8" fill="#EFF6FF" stroke="#6366F1" stroke-width="2"/>
+                            <text x="300" y="110" font-size="14" fill="#6366F1" text-anchor="middle" font-weight="600">Production Scale</text>
+
+                            <!-- Grid of dots representing data -->
+                            <circle cx="250" cy="150" r="3" fill="#6366F1" opacity="0.8"/>
+                            <circle cx="270" cy="150" r="3" fill="#6366F1" opacity="0.8"/>
+                            <circle cx="290" cy="150" r="3" fill="#6366F1" opacity="0.8"/>
+                            <circle cx="310" cy="150" r="3" fill="#6366F1" opacity="0.8"/>
+                            <circle cx="330" cy="150" r="3" fill="#6366F1" opacity="0.8"/>
+                            <circle cx="350" cy="150" r="3" fill="#6366F1" opacity="0.8"/>
+
+                            <circle cx="250" cy="170" r="3" fill="#8B5CF6" opacity="0.8"/>
+                            <circle cx="270" cy="170" r="3" fill="#8B5CF6" opacity="0.8"/>
+                            <circle cx="290" cy="170" r="3" fill="#8B5CF6" opacity="0.8"/>
+                            <circle cx="310" cy="170" r="3" fill="#8B5CF6" opacity="0.8"/>
+                            <circle cx="330" cy="170" r="3" fill="#8B5CF6" opacity="0.8"/>
+                            <circle cx="350" cy="170" r="3" fill="#8B5CF6" opacity="0.8"/>
+
+                            <circle cx="250" cy="190" r="3" fill="#6366F1" opacity="0.8"/>
+                            <circle cx="270" cy="190" r="3" fill="#6366F1" opacity="0.8"/>
+                            <circle cx="290" cy="190" r="3" fill="#6366F1" opacity="0.8"/>
+                            <circle cx="310" cy="190" r="3" fill="#6366F1" opacity="0.8"/>
+                            <circle cx="330" cy="190" r="3" fill="#6366F1" opacity="0.8"/>
+                            <circle cx="350" cy="190" r="3" fill="#6366F1" opacity="0.8"/>
+
+                            <circle cx="250" cy="210" r="3" fill="#8B5CF6" opacity="0.8"/>
+                            <circle cx="270" cy="210" r="3" fill="#8B5CF6" opacity="0.8"/>
+                            <circle cx="290" cy="210" r="3" fill="#8B5CF6" opacity="0.8"/>
+                            <circle cx="310" cy="210" r="3" fill="#8B5CF6" opacity="0.8"/>
+                            <circle cx="330" cy="210" r="3" fill="#8B5CF6" opacity="0.8"/>
+                            <circle cx="350" cy="210" r="3" fill="#8B5CF6" opacity="0.8"/>
+
+                            <text x="300" y="245" font-size="12" fill="#6366F1" text-anchor="middle" font-weight="600">100,000+ items</text>
+                            <text x="300" y="265" font-size="11" fill="#6366F1" text-anchor="middle">~5 minutes</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <div class="hero-scroll-prompt">
+            <span>↓ Scroll to explore ↓</span>
+        </div>
+    </section>
+
+    <!-- Social Proof Section -->
+    <section id="social-proof" class="social-proof-section">
+        <div class="container">
+            <p class="social-proof-text">Solving a universal problem for</p>
+            <div class="social-proof-stats">
+                <div class="social-proof-stat">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-content">
+                        <div class="stat-number">4 hours → 5 min</div>
+                        <div class="stat-label">Time savings</div>
+                    </div>
+                </div>
+                <div class="stat-divider">|</div>
+                <div class="social-proof-stat">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-content">
+                        <div class="stat-number">100,000+ objects</div>
+                        <div class="stat-label">Production-scale data</div>
+                    </div>
+                </div>
+                <div class="stat-divider">|</div>
+                <div class="social-proof-stat">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-content">
+                        <div class="stat-number">4 use cases</div>
+                        <div class="stat-label">One platform</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mission Statement Section -->
+    <section id="mission" class="mission-section">
+        <div class="mission-container">
+            <div class="mission-context fade-in-up">
+                <p class="mission-pre-text">There's a problem affecting thousands of people across the industry.</p>
+            </div>
+
+            <h2 class="mission-statement fade-in-up-delay">
+                Making realistic SaaS data accessible to everyone—<br>
+                <span class="mission-highlight">without building it yourself or compromising on quality.</span>
+            </h2>
+
+            <div class="mission-use-cases fade-in-up-delay-2">
+                <div class="use-case-card">
+                    <div class="use-case-icon">🎯</div>
+                    <h3 class="use-case-title">Demo Data</h3>
+                    <p class="use-case-desc">Impress prospects with realistic, production-scale demos</p>
+                </div>
+                <div class="use-case-card">
+                    <div class="use-case-icon">🧪</div>
+                    <h3 class="use-case-title">Test Data</h3>
+                    <p class="use-case-desc">Validate features with comprehensive QA environments</p>
+                </div>
+                <div class="use-case-card">
+                    <div class="use-case-icon">🔗</div>
+                    <h3 class="use-case-title">Integration Data</h3>
+                    <p class="use-case-desc">Build and test integrations without procurement delays</p>
+                </div>
+            </div>
+
+            <div class="mission-post-context fade-in-up-delay-3">
+                <p class="mission-post-text">Let us show you what this looks like for four different people.</p>
+            </div>
+
+            <div class="mission-scroll-indicator fade-in-up-delay-3">
+                <svg class="mission-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 5v14M19 12l-7 7-7-7"/>
+                </svg>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section id="solution" class="solution-section">
+        <div class="container">
+            <div class="solution-intro">
+                <h2 class="section-title">What If There Was a Better Way?</h2>
+                <p class="section-subtitle">A universal platform for generating realistic SaaS data—in minutes, not hours</p>
+            </div>
+
+            <div class="solution-overview">
+                <div class="solution-brand">
+                    <span class="solution-logo-icon">◐</span>
+                    <h3 class="solution-heading">Meet Mimic</h3>
+                </div>
+                <p class="solution-desc">A universal platform that works across any SaaS vendor. No API expertise required. Production-scale data in minutes.</p>
+            </div>
+
+            <div class="how-it-works">
+                <h3 class="section-heading">How Mimic Works</h3>
+
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <div class="step-number">1</div>
+                        <h4 class="step-title">Connect</h4>
+                        <p class="step-desc">Link to your SaaS platform with secure authentication</p>
+                        <div class="step-visual">
+                            <div class="connection-animation">
+                                <div class="connection-point"></div>
+                                <div class="connection-line"></div>
+                                <div class="connection-point"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">2</div>
+                        <h4 class="step-title">Configure</h4>
+                        <p class="step-desc">Select industry, team size, volume, and use case</p>
+                        <div class="step-visual">
+                            <div class="config-form">
+                                <div class="config-field">
+                                    <div class="config-label">Industry</div>
+                                    <div class="config-value">Cybersecurity</div>
+                                </div>
+                                <div class="config-field">
+                                    <div class="config-label">Team Size</div>
+                                    <div class="config-value">100,000 users</div>
+                                </div>
+                                <div class="config-field">
+                                    <div class="config-label">Use Case</div>
+                                    <div class="config-value">Sales Demo</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">3</div>
+                        <h4 class="step-title">Generate</h4>
+                        <p class="step-desc">Production-scale data created in ~5 minutes</p>
+                        <div class="step-visual">
+                            <div class="generate-animation">
+                                <div class="progress-ring">
+                                    <svg viewBox="0 0 100 100">
+                                        <circle cx="50" cy="50" r="45" />
+                                    </svg>
+                                    <span class="progress-text">100%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">4</div>
+                        <h4 class="step-title">Keep Fresh</h4>
+                        <p class="step-desc">On-demand refresh or continuous updates</p>
+                        <div class="step-visual">
+                            <div class="refresh-options">
+                                <div class="refresh-option">
+                                    <div class="refresh-icon">🔄</div>
+                                    <div class="refresh-label">On-demand</div>
+                                </div>
+                                <div class="refresh-option">
+                                    <div class="refresh-icon">♾️</div>
+                                    <div class="refresh-label">Continuous</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Personas Introduction -->
+    <section id="personas" class="personas-intro">
+        <div class="container">
+            <h2 class="section-title">Meet Four People</h2>
+            <p class="section-subtitle">Each facing their own version of the same problem</p>
+
+            <div class="personas-grid">
+                <div class="persona-card" data-persona="kris">
+                    <div class="persona-avatar">
+                        <div class="avatar-circle" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <span class="avatar-initial">K</span>
+                        </div>
+                    </div>
+                    <h3 class="persona-name">Kris</h3>
+                    <p class="persona-role">Solutions Engineer</p>
+                    <p class="persona-company">@ Databricks</p>
+                    <p class="persona-preview">"I spend 2-4 hours preparing data for every single demo..."</p>
+                    <button class="persona-cta" onclick="scrollToStory('kris')">Read Kris's Story</button>
+                </div>
+
+                <div class="persona-card" data-persona="josephine">
+                    <div class="persona-avatar">
+                        <div class="avatar-circle" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <span class="avatar-initial">J</span>
+                        </div>
+                    </div>
+                    <h3 class="persona-name">Josephine</h3>
+                    <p class="persona-role">Product Manager</p>
+                    <p class="persona-company">@ Notion</p>
+                    <p class="persona-preview">"Now imagine this with 100,000 people... I've already lost them."</p>
+                    <button class="persona-cta" onclick="scrollToStory('josephine')">Read Josephine's Story</button>
+                </div>
+
+                <div class="persona-card" data-persona="felicia">
+                    <div class="persona-avatar">
+                        <div class="avatar-circle" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <span class="avatar-initial">F</span>
+                        </div>
+                    </div>
+                    <h3 class="persona-name">Felicia</h3>
+                    <p class="persona-role">QA Engineer</p>
+                    <p class="persona-company">@ Okta</p>
+                    <p class="persona-preview">"We need customer guinea pigs... and they don't want to be testers."</p>
+                    <button class="persona-cta" onclick="scrollToStory('felicia')">Read Felicia's Story</button>
+                </div>
+
+                <div class="persona-card" data-persona="ash">
+                    <div class="persona-avatar">
+                        <div class="avatar-circle" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                            <span class="avatar-initial">A</span>
+                        </div>
+                    </div>
+                    <h3 class="persona-name">Ash</h3>
+                    <p class="persona-role">Integration Engineer</p>
+                    <p class="persona-company">@ Wiz Security</p>
+                    <p class="persona-preview">"6 figures and weeks of waiting... just to get an empty test environment."</p>
+                    <button class="persona-cta" onclick="scrollToStory('ash')">Read Ash's Story</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Persona Stories Section -->
+    <section id="persona-stories" class="story-section">
+        <div class="story-container">
+            <!-- Kris's Story Accordion -->
+            <div class="story-accordion" data-persona="kris" id="story-kris">
+                <div class="story-accordion-header" onclick="toggleStoryAccordion('kris')">
+                    <div class="story-accordion-title">
+                        <div class="story-persona-badge">
+                            <div class="avatar-circle-small" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                <span class="avatar-initial">K</span>
+                            </div>
+                            <div>
+                                <div class="story-persona-name">Kris</div>
+                                <div class="story-persona-title">Solutions Engineer @ Databricks</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="story-accordion-toggle">
+                        <span class="toggle-text">Read Story</span>
+                        <span class="story-accordion-icon">▼</span>
+                    </div>
+                </div>
+
+                <div class="story-accordion-content">
+                    <div class="story-accordion-inner">
+                        <div class="story-content">
+                <div class="story-block">
+                    <div class="story-label">Who She Is</div>
+                    <h3 class="story-heading">From Effortless to DIY</h3>
+                    <p>Kris is a Solutions Engineer at Databricks. She used to work at Salesforce, where internal tooling made demo prep effortless—one-click lab environments with realistic data. She could focus on selling, not data engineering.</p>
+                </div>
+
+                <div class="story-block">
+                    <div class="story-label">The Situation</div>
+                    <h3 class="story-heading">Every Sales Call Is the Same</h3>
+                    <p>When Kris has a sales call with a new prospect, she knows what's coming: hours of preparation before she can even think about the pitch.</p>
+                </div>
+
+                <div class="story-block problem-block">
+                    <div class="story-label">What Goes Wrong</div>
+                    <h3 class="story-heading">The Manual Grind</h3>
+                    <div class="problem-list">
+                        <div class="problem-item">
+                            <span class="problem-icon">⏱️</span>
+                            <span>2-4 hours researching the prospect's business and use cases</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">✍️</span>
+                            <span>Manually scripting data that looks realistic and meaningful</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">🔄</span>
+                            <span>Starting from scratch for every new prospect</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">💭</span>
+                            <span>Generic demos that force prospects to "imagine" the value</span>
+                        </div>
+                    </div>
+
+                    <div class="comparison-box">
+                        <div class="comparison-item comparison-before">
+                            <div class="comparison-label">At Salesforce</div>
+                            <div class="comparison-value">One-click demos</div>
+                            <div class="comparison-desc">Internal tooling handled everything</div>
+                        </div>
+                        <div class="comparison-arrow">→</div>
+                        <div class="comparison-item comparison-after">
+                            <div class="comparison-label">At Databricks</div>
+                            <div class="comparison-value">2-4 hours per demo</div>
+                            <div class="comparison-desc">Manual scripting and research</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="story-block">
+                    <div class="story-label">Why This Happens</div>
+                    <h3 class="story-heading">The Infrastructure Gap</h3>
+                    <p>At Salesforce, internal teams built sophisticated demo tooling—but they never exposed it to external partners or other companies. Databricks, like most fast-growing companies, doesn't have Salesforce-level sales infrastructure.</p>
+                    <p class="highlight-text">All the responsibility falls on individual SEs to DIY their demos. The further you get from Salesforce-tier companies, the worse this problem becomes.</p>
+                </div>
+
+                <div class="story-block impact-block">
+                    <div class="story-label">How She Feels</div>
+                    <h3 class="story-heading">The Emotional Toll</h3>
+                    <div class="emotion-grid">
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😰</div>
+                            <div class="emotion-text">Stressed and time-crunched before every demo</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😤</div>
+                            <div class="emotion-text">Frustrated being both data engineer AND salesperson</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😬</div>
+                            <div class="emotion-text">Anxious that generic demos make her look unprepared</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😔</div>
+                            <div class="emotion-text">Worried she's leaving deals on the table</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="story-block business-impact-block">
+                    <div class="story-label">Business Impact</div>
+                    <h3 class="story-heading">What's at Stake</h3>
+                    <ul class="impact-list">
+                        <li>Lower sales conversion rates—generic demos don't resonate</li>
+                        <li>Competitive disadvantage vs. vendors with better demo infrastructure</li>
+                        <li>Hours of SE time wasted on low-value manual work</li>
+                        <li>Lost revenue from deals that slip away due to underwhelming demos</li>
+                    </ul>
+                </div>
+
+                <div class="story-quote">
+                    <div class="quote-mark">"</div>
+                    <p class="quote-text">If prospects have to imagine it, I've already lost them.</p>
+                    <div class="quote-attribution">— Kris, Solutions Engineer</div>
+                </div>
+
+                <div class="story-resonance">
+                    <p class="resonance-question">Does Kris's story sound familiar?</p>
+                    <div class="resonance-buttons">
+                        <button class="resonance-btn resonance-yes" onclick="handleResonance('kris', 'yes')">
+                            <span class="resonance-icon">👍</span>
+                            <span>Yes, I've been there</span>
+                        </button>
+                        <button class="resonance-btn resonance-no" onclick="handleResonance('kris', 'no')">
+                            <span class="resonance-icon">👎</span>
+                            <span>Not my experience</span>
+                        </button>
+                    </div>
+                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Josephine's Story Accordion -->
+            <div class="story-accordion" data-persona="josephine" id="story-josephine">
+                <div class="story-accordion-header" onclick="toggleStoryAccordion('josephine')">
+                    <div class="story-accordion-title">
+                        <div class="story-persona-badge">
+                            <div class="avatar-circle-small" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                                <span class="avatar-initial">J</span>
+                            </div>
+                            <div>
+                                <div class="story-persona-name">Josephine</div>
+                                <div class="story-persona-title">Product Manager @ Notion</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="story-accordion-toggle">
+                        <span class="toggle-text">Read Story</span>
+                        <span class="story-accordion-icon">▼</span>
+                    </div>
+                </div>
+
+                <div class="story-accordion-content">
+                    <div class="story-accordion-inner">
+                        <div class="story-content">
+                <div class="story-block">
+                    <div class="story-label">Who She Is</div>
+                    <h3 class="story-heading">Building for Scale, Demoing at Toy Size</h3>
+                    <p>Josephine is a Product Manager at Notion. She gets pulled into sales demos and customer feedback sessions to showcase new product capabilities she's building. Her features are designed for enterprise scale, but her demos tell a different story.</p>
+                </div>
+
+                <div class="story-block">
+                    <div class="story-label">The Situation</div>
+                    <h3 class="story-heading">Showing Enterprise Features</h3>
+                    <p>When demoing a new feature designed for 100,000 employees, Josephine needs to show how it works at that scale. That's where her problems begin.</p>
+                </div>
+
+                <div class="story-block problem-block">
+                    <div class="story-label">What Goes Wrong</div>
+                    <h3 class="story-heading">The Scale Gap</h3>
+
+                    <div class="data-visualization-mockup">
+                        <div class="mockup-header">Demo Dashboard</div>
+                        <div class="mockup-content">
+                            <div class="mockup-stat">
+                                <div class="mockup-stat-value">10</div>
+                                <div class="mockup-stat-label">Users in demo</div>
+                            </div>
+                            <div class="mockup-stat mockup-stat-needed">
+                                <div class="mockup-stat-value">100,000</div>
+                                <div class="mockup-stat-label">Users needed</div>
+                            </div>
+                        </div>
+                        <div class="mockup-chart">
+                            <div class="chart-bar" style="width: 20%; background: #ff6b6b;">
+                                <span class="chart-label">3 data points</span>
+                            </div>
+                            <div class="chart-annotation">Should show months of rich time-series data</div>
+                        </div>
+                    </div>
+
+                    <div class="problem-list">
+                        <div class="problem-item">
+                            <span class="problem-icon">👥</span>
+                            <span>Demo has only 10 users (all he had time to create)</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">📊</span>
+                            <span>Time-series charts show 3 data points instead of months of data</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">💭</span>
+                            <span>Has to say "Now, imagine this with 100,000 people..."</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">👋</span>
+                            <span>Prospects lose interest when they have to "imagine" instead of seeing</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="story-block">
+                    <div class="story-label">Why This Happens</div>
+                    <h3 class="story-heading">The Time Trap</h3>
+                    <p>Josephine doesn't have time to manually create 10,000 objects or 100,000 users. Creating realistic, scaled data requires technical expertise and hours of work—time that should be spent building the product, not preparing demos.</p>
+                    <p class="highlight-text">There's no tooling to help PMs generate production-like demo environments. The cognitive load of demo prep falls entirely on her.</p>
+                </div>
+
+                <div class="story-block impact-block">
+                    <div class="story-label">How She Feels</div>
+                    <h3 class="story-heading">The Credibility Crisis</h3>
+                    <div class="emotion-grid">
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😳</div>
+                            <div class="emotion-text">Embarrassed asking prospects to "imagine" scale</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😕</div>
+                            <div class="emotion-text">Less confident in product decisions based on weak feedback</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😤</div>
+                            <div class="emotion-text">Frustrated that great features look mediocre in demos</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😰</div>
+                            <div class="emotion-text">Worried she's building the wrong things</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="story-block business-impact-block">
+                    <div class="story-label">Business Impact</div>
+                    <h3 class="story-heading">What's at Stake</h3>
+                    <ul class="impact-list">
+                        <li>Weak customer feedback leads to product features that miss the mark</li>
+                        <li>Lost credibility with prospects and customers</li>
+                        <li>Slower product iteration cycles because validation takes longer</li>
+                        <li>Features might fail in production because they weren't properly demoed at scale</li>
+                    </ul>
+                </div>
+
+                <div class="story-quote">
+                    <div class="quote-mark">"</div>
+                    <p class="quote-text">Now imagine this with 100,000 people... and I've already lost them.</p>
+                    <div class="quote-attribution">— Josephine, Product Manager</div>
+                </div>
+
+                <div class="story-resonance">
+                    <p class="resonance-question">Have you experienced this as a PM?</p>
+                    <div class="resonance-buttons">
+                        <button class="resonance-btn resonance-yes" onclick="handleResonance('josephine', 'yes')">
+                            <span class="resonance-icon">👍</span>
+                            <span>Yes, I've been there</span>
+                        </button>
+                        <button class="resonance-btn resonance-no" onclick="handleResonance('josephine', 'no')">
+                            <span class="resonance-icon">👎</span>
+                            <span>Not my experience</span>
+                        </button>
+                    </div>
+                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Felicia's Story Accordion -->
+            <div class="story-accordion" data-persona="felicia" id="story-felicia">
+                <div class="story-accordion-header" onclick="toggleStoryAccordion('felicia')">
+                    <div class="story-accordion-title">
+                        <div class="story-persona-badge">
+                            <div class="avatar-circle-small" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                                <span class="avatar-initial">F</span>
+                            </div>
+                            <div>
+                                <div class="story-persona-name">Felicia</div>
+                                <div class="story-persona-title">QA Engineer @ Okta</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="story-accordion-toggle">
+                        <span class="toggle-text">Read Story</span>
+                        <span class="story-accordion-icon">▼</span>
+                    </div>
+                </div>
+
+                <div class="story-accordion-content">
+                    <div class="story-accordion-inner">
+                        <div class="story-content">
+                <div class="story-block">
+                    <div class="story-label">Who She Is</div>
+                    <h3 class="story-heading">Guardian Against Production Bugs</h3>
+                    <p>Felicia is a QA Engineer at Okta. She's responsible for testing new features before they ship to ensure they work at production scale. Her job is to catch problems before customers do.</p>
+                </div>
+
+                <div class="story-block">
+                    <div class="story-label">The Situation</div>
+                    <h3 class="story-heading">Testing an Authentication Feature</h3>
+                    <p>When testing a new authentication feature that needs to work with 100,000 users across the globe, Felicia needs to verify it handles high volume, diverse user patterns (different timezones, devices, edge cases).</p>
+                </div>
+
+                <div class="story-block problem-block">
+                    <div class="story-label">What Goes Wrong</div>
+                    <h3 class="story-heading">The Testing Bottleneck</h3>
+
+                    <div class="testing-comparison">
+                        <div class="testing-need">
+                            <div class="testing-label">What's Needed</div>
+                            <div class="testing-visual">
+                                <div class="world-map">
+                                    <div class="map-dot" style="top: 30%; left: 20%;"></div>
+                                    <div class="map-dot" style="top: 50%; left: 50%;"></div>
+                                    <div class="map-dot" style="top: 40%; left: 70%;"></div>
+                                    <div class="map-dot" style="top: 60%; left: 30%;"></div>
+                                    <div class="map-dot" style="top: 35%; left: 85%;"></div>
+                                </div>
+                                <div class="testing-stat">100,000 users globally</div>
+                                <div class="testing-detail">Multiple timezones • Various devices • Edge cases</div>
+                            </div>
+                        </div>
+                        <div class="testing-reality">
+                            <div class="testing-label">What She Has</div>
+                            <div class="testing-visual">
+                                <div class="beta-users">
+                                    <div class="beta-user">👤</div>
+                                    <div class="beta-user">👤</div>
+                                    <div class="beta-user">👤</div>
+                                    <div class="beta-ellipsis">...</div>
+                                </div>
+                                <div class="testing-stat">~50 beta customers</div>
+                                <div class="testing-detail testing-problem">Limited coverage • Slow to recruit • Reluctant testers</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="problem-list">
+                        <div class="problem-item">
+                            <span class="problem-icon">🚫</span>
+                            <span>Can't generate a production-scale test dataset herself</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">🐹</span>
+                            <span>Has to tell the PM: "We need customer guinea pigs"</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">🐌</span>
+                            <span>Recruiting beta customers is slow and they resist testing unproven features</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">🕳️</span>
+                            <span>Testing coverage limited to whatever beta users happen to do</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">🐛</span>
+                            <span>Edge cases get missed until production</span>
+                        </div>
+                    </div>
+
+                    <div class="customer-quote-box">
+                        <div class="customer-bubble">
+                            <p>"We don't want to be guinea pigs. We want tested, production-ready features."</p>
+                            <div class="bubble-attribution">— Typical Beta Customer Response</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="story-block">
+                    <div class="story-label">Why This Happens</div>
+                    <h3 class="story-heading">The Data Generation Gap</h3>
+                    <p>Generating realistic, high-volume test data (100k users, global distribution, realistic behavior patterns) is technically complex. No tooling exists to create production-scale synthetic test environments.</p>
+                    <p class="highlight-text">The only option is using real customers as testers—and they resist it. Manual data generation at this scale is impossible.</p>
+                </div>
+
+                <div class="story-block impact-block">
+                    <div class="story-label">How She Feels</div>
+                    <h3 class="story-heading">The Anxiety of Inadequate Testing</h3>
+                    <div class="emotion-grid">
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😰</div>
+                            <div class="emotion-text">Anxious shipping features without adequate testing</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😔</div>
+                            <div class="emotion-text">Guilty asking customers to be guinea pigs</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">🤷</div>
+                            <div class="emotion-text">Helpless knowing testing is inadequate but having no alternatives</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😬</div>
+                            <div class="emotion-text">Stressed anticipating production bugs that could have been caught</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="story-block business-impact-block">
+                    <div class="story-label">Business Impact</div>
+                    <h3 class="story-heading">What's at Stake</h3>
+                    <ul class="impact-list">
+                        <li>Features ship with lower confidence and higher risk</li>
+                        <li>Production bugs damage customer trust and require expensive hotfixes</li>
+                        <li>Delayed release cycles while recruiting beta testers</li>
+                        <li>Security and reliability issues that could have been prevented</li>
+                    </ul>
+
+                    <div class="bug-flow">
+                        <div class="bug-flow-item">
+                            <div class="bug-flow-label">Could have caught in testing</div>
+                            <div class="bug-flow-arrow">→</div>
+                        </div>
+                        <div class="bug-flow-item bug-flow-production">
+                            <div class="bug-flow-label">Shows up in production</div>
+                            <div class="bug-flow-icon">🐛</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="story-quote">
+                    <div class="quote-mark">"</div>
+                    <p class="quote-text">I know the testing is inadequate, but I have no other option. I'm just hoping we don't break production.</p>
+                    <div class="quote-attribution">— Felicia, QA Engineer</div>
+                </div>
+
+                <div class="story-resonance">
+                    <p class="resonance-question">Sound like your QA process?</p>
+                    <div class="resonance-buttons">
+                        <button class="resonance-btn resonance-yes" onclick="handleResonance('felicia', 'yes')">
+                            <span class="resonance-icon">👍</span>
+                            <span>Yes, I've been there</span>
+                        </button>
+                        <button class="resonance-btn resonance-no" onclick="handleResonance('felicia', 'no')">
+                            <span class="resonance-icon">👎</span>
+                            <span>Not my experience</span>
+                        </button>
+                    </div>
+                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ash's Story Accordion -->
+            <div class="story-accordion" data-persona="ash" id="story-ash">
+                <div class="story-accordion-header" onclick="toggleStoryAccordion('ash')">
+                    <div class="story-accordion-title">
+                        <div class="story-persona-badge">
+                            <div class="avatar-circle-small" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                                <span class="avatar-initial">A</span>
+                            </div>
+                            <div>
+                                <div class="story-persona-name">Ash</div>
+                                <div class="story-persona-title">Integration Engineer @ Wiz Security</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="story-accordion-toggle">
+                        <span class="toggle-text">Read Story</span>
+                        <span class="story-accordion-icon">▼</span>
+                    </div>
+                </div>
+
+                <div class="story-accordion-content">
+                    <div class="story-accordion-inner">
+                        <div class="story-content">
+                <div class="story-block">
+                    <div class="story-label">Who He Is</div>
+                    <h3 class="story-heading">Building Bridges Between Platforms</h3>
+                    <p>Ash is an Integration Engineer at Wiz Security. Wiz connects to dozens of platforms—AWS, GCP, Databricks, Salesforce, Oracle, SAP, Workday—to pull security data. Ash builds and maintains these integrations.</p>
+                </div>
+
+                <div class="story-block">
+                    <div class="story-label">The Situation</div>
+                    <h3 class="story-heading">Building a New Oracle Integration</h3>
+                    <p>When a key enterprise customer needs Wiz to integrate with Oracle, Ash wants to connect to Oracle, pull data, test the integration thoroughly, and ship it to customers. But he faces two major hurdles before he can write a single line of code.</p>
+                </div>
+
+                <div class="story-block problem-block">
+                    <div class="story-label">What Goes Wrong</div>
+                    <h3 class="story-heading">Hurdle #1: Getting Tenant Access</h3>
+
+                    <div class="platform-access-grid">
+                        <div class="platform-access-item platform-free">
+                            <div class="platform-tier">Free Tier Platforms</div>
+                            <div class="platform-examples">Salesforce, Asana, Atlassian</div>
+                            <div class="platform-cost">$0</div>
+                            <div class="platform-problem">
+                                <span class="problem-icon">⏰</span>
+                                <span>Only 14-30 day trials</span>
+                            </div>
+                            <div class="platform-problem">
+                                <span class="problem-icon">🔄</span>
+                                <span>Constant tenant recreation</span>
+                            </div>
+                        </div>
+
+                        <div class="platform-access-item platform-enterprise">
+                            <div class="platform-tier">Enterprise Platforms</div>
+                            <div class="platform-examples">Oracle, SAP, Workday</div>
+                            <div class="platform-cost">$100,000+</div>
+                            <div class="platform-problem">
+                                <span class="problem-icon">💰</span>
+                                <span>No free tiers at all</span>
+                            </div>
+                            <div class="platform-problem">
+                                <span class="problem-icon">📅</span>
+                                <span>Weeks/months to procure</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="procurement-timeline">
+                        <div class="timeline-header">Oracle Procurement Timeline</div>
+                        <div class="timeline-steps">
+                            <div class="timeline-step">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-label">Contact Oracle sales</div>
+                                <div class="timeline-duration">Week 1-2</div>
+                            </div>
+                            <div class="timeline-step">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-label">Negotiate partner pricing</div>
+                                <div class="timeline-duration">Week 3-4</div>
+                            </div>
+                            <div class="timeline-step">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-label">Legal & procurement</div>
+                                <div class="timeline-duration">Week 5-8</div>
+                            </div>
+                            <div class="timeline-step">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-label">Tenant provisioning</div>
+                                <div class="timeline-duration">Week 9-10</div>
+                            </div>
+                        </div>
+                        <div class="timeline-result">
+                            <strong>Result:</strong> 2-3 months and 6 figures later, finally ready to start building
+                        </div>
+                    </div>
+                </div>
+
+                <div class="story-block problem-block">
+                    <h3 class="story-heading">Hurdle #2: Generating Test Data</h3>
+
+                    <div class="empty-tenant-visual">
+                        <div class="tenant-window">
+                            <div class="tenant-header">
+                                <div class="tenant-title">Oracle Test Environment</div>
+                                <div class="tenant-status">✓ Provisioned</div>
+                            </div>
+                            <div class="tenant-body">
+                                <div class="empty-state">
+                                    <div class="empty-icon">📭</div>
+                                    <div class="empty-text">No data</div>
+                                    <div class="empty-subtitle">Now what?</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="problem-list">
+                        <div class="problem-item">
+                            <span class="problem-icon">🏗️</span>
+                            <span>Tenant is completely empty after provisioning</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">📚</span>
+                            <span>Must become an expert in Oracle's data model and APIs</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">✍️</span>
+                            <span>Has to manually script realistic datasets to test against</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon">♾️</span>
+                            <span>This entire process repeats for each of 20+ integrations</span>
+                        </div>
+                    </div>
+
+                    <div class="integration-scale">
+                        <div class="scale-header">Ash's Integration Portfolio</div>
+                        <div class="scale-grid">
+                            <div class="scale-item">AWS</div>
+                            <div class="scale-item">GCP</div>
+                            <div class="scale-item">Azure</div>
+                            <div class="scale-item">Salesforce</div>
+                            <div class="scale-item">Oracle</div>
+                            <div class="scale-item">SAP</div>
+                            <div class="scale-item">Workday</div>
+                            <div class="scale-item">ServiceNow</div>
+                            <div class="scale-item">Databricks</div>
+                            <div class="scale-item">Snowflake</div>
+                            <div class="scale-more">+10 more...</div>
+                        </div>
+                        <div class="scale-problem">Each integration = Same painful process</div>
+                    </div>
+                </div>
+
+                <div class="story-block">
+                    <div class="story-label">Why This Happens</div>
+                    <h3 class="story-heading">The Partner Access Problem</h3>
+                    <p>Enterprise vendors don't offer developer-friendly access (unlike modern SaaS). Even vendors with free tiers—like Salesforce—never expose their internal demo data tooling to external partners.</p>
+                    <p class="highlight-text">Every integration engineer at every company is solving this same problem independently. No shared solution exists because each platform is different.</p>
+                </div>
+
+                <div class="story-block impact-block">
+                    <div class="story-label">How He Feels</div>
+                    <h3 class="story-heading">The Burnout Spiral</h3>
+                    <div class="emotion-grid">
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😵</div>
+                            <div class="emotion-text">Overwhelmed by the complexity of supporting 20+ integrations</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😤</div>
+                            <div class="emotion-text">Frustrated spending weeks on procurement before writing code</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">😠</div>
+                            <div class="emotion-text">Resentful that vendors won't share their internal demo tools</div>
+                        </div>
+                        <div class="emotion-item">
+                            <div class="emotion-emoji">🔥</div>
+                            <div class="emotion-text">Burned out from becoming an expert in each new platform</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="story-block business-impact-block">
+                    <div class="story-label">Business Impact</div>
+                    <h3 class="story-heading">What's at Stake</h3>
+                    <ul class="impact-list">
+                        <li>Slow integration development—weeks wasted on access and data setup</li>
+                        <li>Limited test coverage leads to customer-reported bugs</li>
+                        <li>Can't scale integration portfolio—each new platform is a multi-week project</li>
+                        <li>Competitive disadvantage vs. vendors with more robust integration ecosystems</li>
+                        <li>Engineering resources wasted on undifferentiated work</li>
+                    </ul>
+                </div>
+
+                <div class="story-quote">
+                    <div class="quote-mark">"</div>
+                    <p class="quote-text">6 figures and weeks of waiting just to get an empty test environment. Then I have to become an Oracle expert to generate test data. This is completely unsustainable.</p>
+                    <div class="quote-attribution">— Ash, Integration Engineer</div>
+                </div>
+
+                <div class="story-resonance">
+                    <p class="resonance-question">Recognize this integration nightmare?</p>
+                    <div class="resonance-buttons">
+                        <button class="resonance-btn resonance-yes" onclick="handleResonance('ash', 'yes')">
+                            <span class="resonance-icon">👍</span>
+                            <span>Yes, I've been there</span>
+                        </button>
+                        <button class="resonance-btn resonance-no" onclick="handleResonance('ash', 'no')">
+                            <span class="resonance-icon">👎</span>
+                            <span>Not my experience</span>
+                        </button>
+                    </div>
+                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Convergence Section -->
+    <section id="convergence" class="convergence-section">
+        <div class="container">
+            <h2 class="section-title">Four People, One Problem</h2>
+            <p class="section-subtitle">Different roles, different companies—but they all hit the same wall</p>
+
+            <div class="convergence-visual">
+                <!-- Persona Names at Top -->
+                <div class="convergence-names">
+                    <div class="convergence-name" data-persona="kris">Kris</div>
+                    <div class="convergence-name" data-persona="josephine">Josephine</div>
+                    <div class="convergence-name" data-persona="felicia">Felicia</div>
+                    <div class="convergence-name" data-persona="ash">Ash</div>
+                </div>
+
+                <!-- SVG for Converging Lines -->
+                <svg class="convergence-svg" viewBox="0 0 1000 350" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Define gradient for lines -->
+                    <defs>
+                        <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#6366F1;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#3B82F6;stop-opacity:0.8" />
+                        </linearGradient>
+                    </defs>
+
+                    <!-- Converging paths from each name to center -->
+                    <!-- Kris (left) -->
+                    <path class="convergence-line" d="M 125 20 Q 125 150, 500 280"
+                          stroke="url(#lineGradient)" stroke-width="3" fill="none"
+                          stroke-linecap="round" opacity="0" />
+
+                    <!-- Josephine (center-left) -->
+                    <path class="convergence-line" d="M 335 20 Q 340 150, 500 280"
+                          stroke="url(#lineGradient)" stroke-width="3" fill="none"
+                          stroke-linecap="round" opacity="0" />
+
+                    <!-- Felicia (center-right) -->
+                    <path class="convergence-line" d="M 665 20 Q 660 150, 500 280"
+                          stroke="url(#lineGradient)" stroke-width="3" fill="none"
+                          stroke-linecap="round" opacity="0" />
+
+                    <!-- Ash (right) -->
+                    <path class="convergence-line" d="M 875 20 Q 875 150, 500 280"
+                          stroke="url(#lineGradient)" stroke-width="3" fill="none"
+                          stroke-linecap="round" opacity="0" />
+                </svg>
+
+                <!-- Center Circle -->
+                <div class="convergence-center">
+                    <div class="convergence-icon">🎯</div>
+                    <div class="convergence-problem">No Easy Access to Realistic SaaS Data</div>
+                </div>
+            </div>
+
+            <div class="problem-dimensions">
+                <div class="problem-dimension">
+                    <div class="dimension-icon">⏱️</div>
+                    <h3 class="dimension-title">Manual</h3>
+                    <p class="dimension-desc">Hours or days to set up each environment</p>
+                </div>
+                <div class="problem-dimension">
+                    <div class="dimension-icon">🔧</div>
+                    <h3 class="dimension-title">DIY</h3>
+                    <p class="dimension-desc">Everyone builds their own solutions from scratch</p>
+                </div>
+                <div class="problem-dimension">
+                    <div class="dimension-icon">🎓</div>
+                    <h3 class="dimension-title">High Skill Required</h3>
+                    <p class="dimension-desc">API expertise and platform knowledge needed</p>
+                </div>
+                <div class="problem-dimension">
+                    <div class="dimension-icon">🕳️</div>
+                    <h3 class="dimension-title">Time Suck</h3>
+                    <p class="dimension-desc">Takes away from high-value work</p>
+                </div>
+                <div class="problem-dimension">
+                    <div class="dimension-icon">📉</div>
+                    <h3 class="dimension-title">Low Quality</h3>
+                    <p class="dimension-desc">Unrealistic, sparse, generic data</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cost Section -->
+    <section id="cost" class="cost-section">
+        <div class="container">
+            <h2 class="section-title">The Human Cost</h2>
+            <p class="section-subtitle">This isn't just an inconvenience—it's affecting real people and real businesses</p>
+
+            <div class="cost-grid">
+                <div class="cost-card">
+                    <div class="cost-persona">
+                        <div class="avatar-circle-small" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <span class="avatar-initial">K</span>
+                        </div>
+                        <span>Kris</span>
+                    </div>
+                    <ul class="cost-list">
+                        <li>Lower conversion rates</li>
+                        <li>Competitive disadvantage</li>
+                        <li>Deals left on the table</li>
+                    </ul>
+                </div>
+
+                <div class="cost-card">
+                    <div class="cost-persona">
+                        <div class="avatar-circle-small" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <span class="avatar-initial">J</span>
+                        </div>
+                        <span>Josephine</span>
+                    </div>
+                    <ul class="cost-list">
+                        <li>Weak customer feedback</li>
+                        <li>Lost credibility</li>
+                        <li>Features that miss the mark</li>
+                    </ul>
+                </div>
+
+                <div class="cost-card">
+                    <div class="cost-persona">
+                        <div class="avatar-circle-small" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <span class="avatar-initial">F</span>
+                        </div>
+                        <span>Felicia</span>
+                    </div>
+                    <ul class="cost-list">
+                        <li>Inadequate testing</li>
+                        <li>Production bugs</li>
+                        <li>Damaged customer trust</li>
+                    </ul>
+                </div>
+
+                <div class="cost-card">
+                    <div class="cost-persona">
+                        <div class="avatar-circle-small" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                            <span class="avatar-initial">A</span>
+                        </div>
+                        <span>Ash</span>
+                    </div>
+                    <ul class="cost-list">
+                        <li>Slow development cycles</li>
+                        <li>Can't scale integrations</li>
+                        <li>Engineering burnout</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Transformation Section -->
+    <section id="transformation" class="transformation-section">
+        <div class="container">
+            <h2 class="section-title">The Transformation</h2>
+            <p class="section-subtitle">From hours of manual work to minutes of automated generation</p>
+
+            <div class="transformation-grid">
+                <div class="transformation-item">
+                    <div class="transformation-before">
+                        <div class="transform-label">Before</div>
+                        <div class="transform-value">2-4 hours</div>
+                    </div>
+                    <div class="transformation-arrow">→</div>
+                    <div class="transformation-after">
+                        <div class="transform-label">After</div>
+                        <div class="transform-value">5 minutes</div>
+                    </div>
+                    <div class="transformation-desc">Time per environment</div>
+                </div>
+
+                <div class="transformation-item">
+                    <div class="transformation-before">
+                        <div class="transform-label">Before</div>
+                        <div class="transform-value">DIY Scripts</div>
+                    </div>
+                    <div class="transformation-arrow">→</div>
+                    <div class="transformation-after">
+                        <div class="transform-label">After</div>
+                        <div class="transform-value">One-Click</div>
+                    </div>
+                    <div class="transformation-desc">Setup complexity</div>
+                </div>
+
+                <div class="transformation-item">
+                    <div class="transformation-before">
+                        <div class="transform-label">Before</div>
+                        <div class="transform-value">Task 1, Task 2...</div>
+                    </div>
+                    <div class="transformation-arrow">→</div>
+                    <div class="transformation-after">
+                        <div class="transform-label">After</div>
+                        <div class="transform-value">Q4 Security Audit</div>
+                    </div>
+                    <div class="transformation-desc">Data realism</div>
+                </div>
+
+                <div class="transformation-item">
+                    <div class="transformation-before">
+                        <div class="transform-label">Before</div>
+                        <div class="transform-value">10 objects</div>
+                    </div>
+                    <div class="transformation-arrow">→</div>
+                    <div class="transformation-after">
+                        <div class="transform-label">After</div>
+                        <div class="transform-value">100,000 objects</div>
+                    </div>
+                    <div class="transformation-desc">Scale capability</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why This Matters -->
+    <section id="why-matters" class="why-matters-section">
+        <div class="container">
+            <h2 class="section-title">Why This Matters</h2>
+            <p class="section-subtitle">This isn't just a tooling problem—it's a market opportunity</p>
+
+            <div class="matters-content">
+                <div class="matters-stat">
+                    <div class="stat-value">Millions</div>
+                    <div class="stat-label">of professionals face this problem daily</div>
+                </div>
+                <div class="matters-stat">
+                    <div class="stat-value">Hours</div>
+                    <div class="stat-label">wasted on undifferentiated manual work</div>
+                </div>
+                <div class="matters-stat">
+                    <div class="stat-value">Every</div>
+                    <div class="stat-label">company solves this independently</div>
+                </div>
+            </div>
+
+            <p class="matters-summary">
+                SEs, PMs, QA engineers, and integration engineers across thousands of companies are all solving the same problem in isolation. There's no universal solution. This is a horizontal platform opportunity that can serve multiple roles, industries, and use cases.
+            </p>
+        </div>
+    </section>
+
+    <!-- Get Involved / Contact -->
+    <section id="contact" class="contact-section">
+        <div class="container">
+            <h2 class="section-title">Get Involved</h2>
+            <p class="section-subtitle">Help us build the right solution</p>
+
+            <div class="contact-grid">
+                <div class="contact-card">
+                    <h3 class="contact-heading">Tell Us What You Need</h3>
+                    <p class="contact-desc">Share your use case and help us understand what solution would work best for you.</p>
+                    <form class="contact-form" onsubmit="handleProblemForm(event)">
+                        <input type="text" name="name" placeholder="Your name" required class="form-input">
+                        <input type="email" name="email" placeholder="Your email" required class="form-input">
+                        <input type="text" name="role" placeholder="Your role (e.g., Solutions Engineer)" required class="form-input">
+                        <textarea name="experience" placeholder="Tell us about your experience with this problem..." required class="form-textarea"></textarea>
+                        <button type="submit" class="form-submit">Share My Experience</button>
+                    </form>
+                </div>
+
+                <div class="contact-card">
+                    <h3 class="contact-heading">Join the Waitlist</h3>
+                    <p class="contact-desc">Be the first to try Mimic when we launch. Get early access and exclusive updates.</p>
+                    <form class="contact-form" onsubmit="handleWaitlistForm(event)">
+                        <input type="text" name="name" placeholder="Your name" required class="form-input">
+                        <input type="email" name="email" placeholder="Your email" required class="form-input">
+                        <input type="text" name="role" placeholder="Your role" required class="form-input">
+                        <input type="text" name="company" placeholder="Your company (optional)" class="form-input">
+                        <button type="submit" class="form-submit">Join Waitlist</button>
+                    </form>
+                </div>
+
+                <div class="contact-card">
+                    <h3 class="contact-heading">Connect With Us</h3>
+                    <p class="contact-desc">Interested in partnering, investing, or building this together? Let's talk.</p>
+                    <form class="contact-form" onsubmit="handleInvestorForm(event)">
+                        <input type="text" name="name" placeholder="Your name" required class="form-input">
+                        <input type="email" name="email" placeholder="Your email" required class="form-input">
+                        <input type="text" name="company" placeholder="Your company/fund" required class="form-input">
+                        <textarea name="message" placeholder="What would you like to discuss?" required class="form-textarea"></textarea>
+                        <button type="submit" class="form-submit">Let's Connect</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="feedback-prompt">
+                <p class="feedback-question">Quick feedback: Does this problem feel real and painful to you?</p>
+                <div class="feedback-buttons">
+                    <button class="feedback-btn feedback-yes" onclick="handleOverallFeedback('yes')">
+                        <span class="feedback-icon">✓</span>
+                        <span>Yes, this is a real problem</span>
+                    </button>
+                    <button class="feedback-btn feedback-maybe" onclick="handleOverallFeedback('maybe')">
+                        <span class="feedback-icon">~</span>
+                        <span>Maybe, needs refinement</span>
+                    </button>
+                    <button class="feedback-btn feedback-no" onclick="handleOverallFeedback('no')">
+                        <span class="feedback-icon">✗</span>
+                        <span>No, doesn't resonate</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Login Page (Hidden by default) -->
+    <section id="login-page" class="login-page" style="display: none;">
+        <div class="login-container">
+            <div class="login-box">
+                <div class="login-header">
+                    <div class="login-logo">
+                        <span class="logo-icon">◐</span>
+                        <span class="logo-text">Mimic</span>
+                    </div>
+                    <h2 class="login-title">Welcome Back</h2>
+                    <p class="login-subtitle">Sign in to your account</p>
+                </div>
+                <form class="login-form" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="login-email" class="form-label">Email</label>
+                        <input type="email" id="login-email" name="email" placeholder="your@email.com" required class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password" class="form-label">Password</label>
+                        <input type="password" id="login-password" name="password" placeholder="Enter your password" required class="form-input">
+                    </div>
+                    <div class="form-options">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="remember">
+                            <span>Remember me</span>
+                        </label>
+                        <a href="#" class="forgot-password">Forgot password?</a>
+                    </div>
+                    <button type="submit" class="login-submit-btn">Sign In</button>
+                </form>
+                <div class="login-footer">
+                    <p>Don't have an account? <a href="#" class="signup-link">Sign up</a></p>
+                    <button class="back-to-home-btn" onclick="navigateToHome()">Back to Home</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-brand">
+                <div class="footer-logo">
+                    <span class="footer-logo-icon">◐</span>
+                    <span class="footer-logo-text">Mimic</span>
+                </div>
+                <p class="footer-tagline">Making realistic SaaS data accessible to everyone</p>
+            </div>
+
+            <div class="footer-divider"></div>
+
+            <p class="footer-text">This is a problem validation exercise, not a finished product pitch.</p>
+            <p class="footer-text">Built to gather feedback and test if these problems resonate with real people.</p>
+
+            <div class="footer-share">
+                <span>Share this story:</span>
+                <a href="#" onclick="shareLinkedIn()" class="share-link">LinkedIn</a>
+                <a href="#" onclick="shareTwitter()" class="share-link">Twitter</a>
+                <a href="#" onclick="shareEmail()" class="share-link">Email</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="marketing-script.js"></script>
+    <script>
+        // Override navigation functions for integration
+        function navigateToLogin() {
+            // Hide all main sections
+            document.querySelectorAll('section:not(#login-page)').forEach(section => {
+                section.style.display = 'none';
+            });
+            document.querySelector('nav').style.display = 'none';
+            document.querySelector('footer').style.display = 'none';
+            document.querySelector('.progress-bar').style.display = 'none';
+
+            // Show login page
+            document.getElementById('login-page').style.display = 'flex';
+            window.scrollTo(0, 0);
+        }
+
+        function navigateToHome() {
+            // Show all main sections
+            document.querySelectorAll('section:not(#login-page)').forEach(section => {
+                section.style.display = '';
+            });
+            document.querySelector('nav').style.display = '';
+            document.querySelector('footer').style.display = '';
+            document.querySelector('.progress-bar').style.display = '';
+
+            // Hide login page
+            document.getElementById('login-page').style.display = 'none';
+            window.scrollTo(0, 0);
+        }
+
+        function handleLogin(event) {
+            event.preventDefault();
+            // Fake authentication - just redirect to dashboard
+            window.location.href = '/dashboard';
+        }
+    </script>
+</body>
+</html>
