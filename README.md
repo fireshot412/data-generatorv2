@@ -293,10 +293,10 @@ If the service crashes or is stopped:
 For programmatic control, you can run services directly:
 
 ```python
-from continuous.service import ContinuousService
+from continuous.services.asana_service import AsanaService
 from continuous.state_manager import StateManager
 from continuous.llm_generator import LLMGenerator
-from continuous.asana_client import AsanaClientPool
+from continuous.connections.asana_connection import AsanaClientPool
 import asyncio
 
 # Configure
@@ -314,7 +314,7 @@ llm = LLMGenerator("YOUR_ANTHROPIC_KEY")
 clients = AsanaClientPool({"User1": "TOKEN1", "User2": "TOKEN2"})
 
 # Create and run
-service = ContinuousService(config, state_manager, llm, clients)
+service = AsanaService(config, state_manager, llm, clients)
 asyncio.run(service.run())
 ```
 

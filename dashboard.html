@@ -777,6 +777,41 @@
             color: white;
         }
 
+        /* Connection Type Badges */
+        .connection-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .connection-badge.asana {
+            background-color: #f06a6a;
+            color: white;
+        }
+
+        .connection-badge.okta {
+            background-color: #007dc1;
+            color: white;
+        }
+
+        /* Connection-specific job cards */
+        .job-card.asana {
+            border-left: 4px solid #f06a6a;
+        }
+
+        .job-card.okta {
+            border-left: 4px solid #007dc1;
+        }
+
+        /* Connection-specific form fields */
+        .asana-only, .okta-only {
+            transition: opacity 0.2s, max-height 0.3s;
+        }
+
         /* User tokens */
         .user-tokens-container {
             border: 1px solid var(--gray-200);
@@ -949,7 +984,7 @@
         <main class="main-content">
             <div class="topbar">
                 <h1 class="topbar-title" id="pageTitle">Dashboard</h1>
-                <div class="topbar-actions">
+                <div class="topbar-actions" id="jobActions" style="display: none;">
                     <button class="btn btn-secondary" onclick="refreshData()">
                         🔄 Refresh
                     </button>
@@ -1003,6 +1038,14 @@
             currentView = view;
             const contentArea = document.getElementById('contentArea');
             const pageTitle = document.getElementById('pageTitle');
+            const jobActions = document.getElementById('jobActions');
+
+            // Show job actions only on jobs page
+            if (view === 'jobs') {
+                jobActions.style.display = 'flex';
+            } else {
+                jobActions.style.display = 'none';
+            }
 
             switch(view) {
                 case 'dashboard':
@@ -1384,6 +1427,7 @@
             let details = '';
 
             switch(activity.action) {
+                // Asana activities
                 case 'project_created':
                     action = '🎯 Project Created';
                     details = `Created project: <strong>${activityDetails.project_name}</strong>`;
@@ -1408,6 +1452,37 @@
                     action = '🔓 Item Unblocked';
                     details = `Unblocked: <strong>${activityDetails.task_name || activityDetails.task_id}</strong>`;
                     break;
+
+                // Okta activities
+                case 'user_created':
+                    action = '👤 User Created';
+                    details = `Created user: <strong>${activityDetails.email || activityDetails.user_name}</strong>`;
+                    break;
+                case 'group_created':
+                    action = '👥 Group Created';
+                    details = `Created group: <strong>${activityDetails.group_name}</strong>`;
+                    break;
+                case 'app_created':
+                    action = '📱 App Created';
+                    details = `Created app: <strong>${activityDetails.app_name}</strong>`;
+                    break;
+                case 'user_assigned_to_app':
+                    action = '🔗 App Assigned';
+                    details = `Assigned <strong>${activityDetails.user_email}</strong> to app <strong>${activityDetails.app_name}</strong>`;
+                    break;
+                case 'user_added_to_group':
+                    action = '➕ User Added to Group';
+                    details = `Added <strong>${activityDetails.user_email}</strong> to group <strong>${activityDetails.group_name}</strong>`;
+                    break;
+                case 'user_activated':
+                    action = '✓ User Activated';
+                    details = `Activated user: <strong>${activityDetails.email || activityDetails.user_name}</strong>`;
+                    break;
+                case 'user_deactivated':
+                    action = '✗ User Deactivated';
+                    details = `Deactivated user: <strong>${activityDetails.email || activityDetails.user_name}</strong>`;
+                    break;
+
                 default:
                     action = activity.action.replace(/_/g, ' ').toUpperCase();
                     details = JSON.stringify(activityDetails);
@@ -1474,8 +1549,11 @@
             container.innerHTML = html;
         }
 
-        async function renderJobs() {
+        let currentJobFilter = 'all';
+
+        async function renderJobs(filterType = 'all') {
             const contentArea = document.getElementById('contentArea');
+            currentJobFilter = filterType;
             contentArea.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading jobs...</p></div>';
 
             try {
@@ -1495,11 +1573,44 @@
                             </div>
                         `;
                     } else {
-                        let html = '<div class="jobs-grid">';
+                        // Filter jobs by connection type
+                        let filteredJobs = jobsData;
+                        if (filterType !== 'all') {
+                            filteredJobs = jobsData.filter(job => {
+                                const connectionType = job.connection_type || job.vendor || 'asana';
+                                return connectionType === filterType;
+                            });
+                        }
 
-                        jobsData.forEach(job => {
-                            html += renderJobCard(job);
-                        });
+                        let html = `
+                            <div style="margin-bottom: 24px; display: flex; gap: 12px; align-items: center;">
+                                <span style="font-weight: 600; color: var(--gray-700);">Filter by:</span>
+                                <button class="btn ${filterType === 'all' ? 'btn-primary' : 'btn-secondary'}" onclick="renderJobs('all')">
+                                    All (${jobsData.length})
+                                </button>
+                                <button class="btn ${filterType === 'asana' ? 'btn-primary' : 'btn-secondary'}" onclick="renderJobs('asana')">
+                                    <span class="connection-badge asana" style="margin-right: 4px;">Asana</span>
+                                    (${jobsData.filter(j => (j.connection_type || j.vendor || 'asana') === 'asana').length})
+                                </button>
+                                <button class="btn ${filterType === 'okta' ? 'btn-primary' : 'btn-secondary'}" onclick="renderJobs('okta')">
+                                    <span class="connection-badge okta" style="margin-right: 4px;">Okta</span>
+                                    (${jobsData.filter(j => (j.connection_type || j.vendor || 'asana') === 'okta').length})
+                                </button>
+                            </div>
+                            <div class="jobs-grid">
+                        `;
+
+                        if (filteredJobs.length === 0) {
+                            html += `
+                                <div style="padding: 40px; text-align: center; color: var(--gray-500);">
+                                    No ${filterType} jobs found
+                                </div>
+                            `;
+                        } else {
+                            filteredJobs.forEach(job => {
+                                html += renderJobCard(job);
+                            });
+                        }
 
                         html += '</div>';
                         contentArea.innerHTML = html;
@@ -1518,16 +1629,91 @@
             }
         }
 
+        function renderJobStats(job, connectionType) {
+            if (connectionType === 'okta') {
+                return `
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.users_created || 0}</div>
+                        <div class="job-stat-label">Users</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.groups_created || 0}</div>
+                        <div class="job-stat-label">Groups</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.apps_created || 0}</div>
+                        <div class="job-stat-label">Apps</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.app_assignments_created || 0}</div>
+                        <div class="job-stat-label">App Assignments</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.group_memberships_created || 0}</div>
+                        <div class="job-stat-label">Group Members</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.users_activated || 0}</div>
+                        <div class="job-stat-label">Activated Users</div>
+                    </div>
+                `;
+            } else {
+                // Default to Asana stats
+                return `
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.projects_created || 0}</div>
+                        <div class="job-stat-label">Projects</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.tasks_created || 0}</div>
+                        <div class="job-stat-label">Tasks</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.subtasks_created || 0}</div>
+                        <div class="job-stat-label">Subtasks</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.comments_added || 0}</div>
+                        <div class="job-stat-label">Comments</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.tasks_completed || 0}</div>
+                        <div class="job-stat-label">Completed</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.custom_fields_created || 0}</div>
+                        <div class="job-stat-label">Custom Fields</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.sections_created || 0}</div>
+                        <div class="job-stat-label">Sections</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.tags_created || 0}</div>
+                        <div class="job-stat-label">Tags</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.portfolios_created || 0}</div>
+                        <div class="job-stat-label">Portfolios</div>
+                    </div>
+                `;
+            }
+        }
+
         function renderJobCard(job) {
             const startedAt = new Date(job.started_at);
             const now = new Date();
             const runtimeHours = Math.floor((now - startedAt) / (1000 * 60 * 60));
+            const connectionType = job.connection_type || job.vendor || 'asana';
 
             return `
-                <div class="job-card">
+                <div class="job-card ${connectionType}">
                     <div class="job-card-header">
                         <div class="job-title-section">
-                            <div class="job-title">${job.job_name || job.workspace_name}</div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span class="connection-badge ${connectionType}">${connectionType}</span>
+                                <div class="job-title">${job.job_name || job.workspace_name}</div>
+                            </div>
                             <div class="job-subtitle">${job.vendor || 'asana'} • ${job.industry}${job.job_name ? ' • ' + job.workspace_name : ''} • Job ID: ${job.job_id}</div>
                         </div>
                         <div class="job-status-badge ${job.status}">${job.status}</div>
@@ -1535,42 +1721,7 @@
 
                     <div class="job-card-body">
                         <div class="job-stats-grid">
-                            <div class="job-stat">
-                                <div class="job-stat-value">${job.stats.projects_created}</div>
-                                <div class="job-stat-label">Projects</div>
-                            </div>
-                            <div class="job-stat">
-                                <div class="job-stat-value">${job.stats.tasks_created}</div>
-                                <div class="job-stat-label">Tasks</div>
-                            </div>
-                            <div class="job-stat">
-                                <div class="job-stat-value">${job.stats.subtasks_created || 0}</div>
-                                <div class="job-stat-label">Subtasks</div>
-                            </div>
-                            <div class="job-stat">
-                                <div class="job-stat-value">${job.stats.comments_added}</div>
-                                <div class="job-stat-label">Comments</div>
-                            </div>
-                            <div class="job-stat">
-                                <div class="job-stat-value">${job.stats.tasks_completed}</div>
-                                <div class="job-stat-label">Completed</div>
-                            </div>
-                            <div class="job-stat">
-                                <div class="job-stat-value">${job.stats.custom_fields_created || 0}</div>
-                                <div class="job-stat-label">Custom Fields</div>
-                            </div>
-                            <div class="job-stat">
-                                <div class="job-stat-value">${job.stats.sections_created || 0}</div>
-                                <div class="job-stat-label">Sections</div>
-                            </div>
-                            <div class="job-stat">
-                                <div class="job-stat-value">${job.stats.tags_created || 0}</div>
-                                <div class="job-stat-label">Tags</div>
-                            </div>
-                            <div class="job-stat">
-                                <div class="job-stat-value">${job.stats.portfolios_created || 0}</div>
-                                <div class="job-stat-label">Portfolios</div>
-                            </div>
+                            ${renderJobStats(job, connectionType)}
                         </div>
 
                         ${job.status === 'initializing' ? `
@@ -2532,11 +2683,31 @@
                                 </div>
 
                                 <div id="advancedOptions" style="display: none; padding: 16px 0;">
-                                    <div class="form-group">
+                                    <!-- Asana-specific fields -->
+                                    <div class="form-group asana-only">
                                         <label>Initial Projects
                                             <div class="label-description">Number of projects to create when starting</div>
                                         </label>
                                         <input type="number" id="initialProjects" value="3" min="1" max="10">
+                                    </div>
+
+                                    <!-- Okta-specific fields -->
+                                    <div class="form-group okta-only" style="display: none;">
+                                        <label>Initial Users
+                                            <div class="label-description">Number of users to create when starting</div>
+                                        </label>
+                                        <input type="number" id="initialUsers" value="50" min="10" max="1000">
+                                    </div>
+
+                                    <div class="form-group okta-only" style="display: none;">
+                                        <label>Organization Size
+                                            <div class="label-description">Size profile affects user/group distribution</div>
+                                        </label>
+                                        <select id="orgSize">
+                                            <option value="startup">Startup (10-50 users)</option>
+                                            <option value="midsize" selected>Mid-Size (100-500 users)</option>
+                                            <option value="enterprise">Enterprise (1000+ users)</option>
+                                        </select>
                                     </div>
 
                                     <div class="form-group">
@@ -2573,35 +2744,35 @@
                                         </select>
                                     </div>
 
-                                    <div class="form-group">
+                                    <div class="form-group asana-only">
                                         <label>Task Completion Rate (% per week)
                                             <div class="label-description">What percentage of tasks get completed each week</div>
                                         </label>
                                         <input type="number" id="completionRate" value="20" min="0" max="100">
                                     </div>
 
-                                    <div class="form-group">
+                                    <div class="form-group asana-only">
                                         <label>Blocked Task Frequency (%)
                                             <div class="label-description">Percentage of tasks that become blocked</div>
                                         </label>
                                         <input type="number" id="blockedFrequency" value="15" min="0" max="100">
                                     </div>
 
-                                    <div class="form-group">
+                                    <div class="form-group asana-only">
                                         <label>Average Blocked Duration (days)
                                             <div class="label-description">How long tasks stay blocked before unblocking</div>
                                         </label>
                                         <input type="number" id="blockedDuration" value="2" min="1" max="30">
                                     </div>
 
-                                    <div class="form-group">
+                                    <div class="form-group asana-only">
                                         <label>Comment Frequency (per task per day)
                                             <div class="label-description">Average number of comments per task per day</div>
                                         </label>
                                         <input type="number" id="commentFrequency" value="0.5" min="0" max="10" step="0.1">
                                     </div>
 
-                                    <div class="form-group">
+                                    <div class="form-group asana-only">
                                         <label>New Project Frequency (days)
                                             <div class="label-description">Create new project every X days</div>
                                         </label>
@@ -2764,6 +2935,9 @@
 
             if (!connectionId) {
                 infoDiv.style.display = 'none';
+                // Hide all connection-specific fields
+                document.querySelectorAll('.asana-only').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.okta-only').forEach(el => el.style.display = 'none');
                 return;
             }
 
@@ -2771,12 +2945,27 @@
             const connection = connections.find(c => c.id === connectionId);
 
             if (connection) {
+                const connectionType = connection.vendor || 'asana';
+
                 infoDiv.style.display = 'block';
                 infoDiv.innerHTML = `
                     <div style="margin-bottom: 8px;"><strong>Platform:</strong> ${connection.vendor.charAt(0).toUpperCase() + connection.vendor.slice(1)}</div>
                     <div style="margin-bottom: 8px;"><strong>Workspace:</strong> ${connection.workspaceGid}</div>
                     <div><strong>Users:</strong> ${connection.users.map(u => u.name).join(', ')}</div>
                 `;
+
+                // Show/hide connection-specific fields based on connection type
+                if (connectionType === 'asana') {
+                    document.querySelectorAll('.asana-only').forEach(el => el.style.display = 'block');
+                    document.querySelectorAll('.okta-only').forEach(el => el.style.display = 'none');
+                } else if (connectionType === 'okta') {
+                    document.querySelectorAll('.asana-only').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('.okta-only').forEach(el => el.style.display = 'block');
+                } else {
+                    // Default to asana if unknown
+                    document.querySelectorAll('.asana-only').forEach(el => el.style.display = 'block');
+                    document.querySelectorAll('.okta-only').forEach(el => el.style.display = 'none');
+                }
             }
         }
 
@@ -2937,28 +3126,37 @@
                 };
                 const mappedIndustry = industryMap[selectedIndustry] || selectedIndustry;
 
-                // Build configuration using connection and settings
+                const connectionType = connection.vendor || 'asana';
+
+                // Build base configuration using connection and settings
                 const config = {
+                    connection_type: connectionType,
                     vendor: connection.vendor,
                     industry: mappedIndustry,
-                    // use_case_scenario removed - system will automatically cycle through all scenarios
                     workspace_gid: connection.workspaceGid,
                     workspace_name: connection.name || `${selectedIndustry.charAt(0).toUpperCase() + selectedIndustry.slice(1)} Demo`,
                     job_name: document.getElementById('jobName').value.trim() || null,
                     duration_days: durationType === 'indefinite' ? 'indefinite' : parseInt(durationType),
-                    initial_projects: parseInt(getAdvancedValue('initialProjects', 3)),
                     activity_level: getAdvancedValue('activityLevel', 'medium'),
                     working_hours: getAdvancedValue('workingHours', 'us_workforce'),
                     burst_factor: parseFloat(getAdvancedValue('burstFactor', 0.5)),
-                    task_completion_rate: parseInt(getAdvancedValue('completionRate', 20)),
-                    blocked_task_frequency: parseInt(getAdvancedValue('blockedFrequency', 15)),
-                    blocked_task_duration: parseInt(getAdvancedValue('blockedDuration', 2)),
-                    comment_frequency: parseFloat(getAdvancedValue('commentFrequency', 0.5)),
-                    new_project_frequency_days: parseInt(getAdvancedValue('projectFrequency', 14)),
                     privacy: 'private',
                     user_tokens: userTokens,
                     anthropic_api_key: settings.anthropicKey
                 };
+
+                // Add connection-specific fields
+                if (connectionType === 'asana') {
+                    config.initial_projects = parseInt(getAdvancedValue('initialProjects', 3));
+                    config.task_completion_rate = parseInt(getAdvancedValue('completionRate', 20));
+                    config.blocked_task_frequency = parseInt(getAdvancedValue('blockedFrequency', 15));
+                    config.blocked_task_duration = parseInt(getAdvancedValue('blockedDuration', 2));
+                    config.comment_frequency = parseFloat(getAdvancedValue('commentFrequency', 0.5));
+                    config.new_project_frequency_days = parseInt(getAdvancedValue('projectFrequency', 14));
+                } else if (connectionType === 'okta') {
+                    config.initial_users = parseInt(getAdvancedValue('initialUsers', 50));
+                    config.org_size = getAdvancedValue('orgSize', 'midsize');
+                }
 
                 // Start job
                 const response = await fetch(`${API_BASE}/jobs/start`, {

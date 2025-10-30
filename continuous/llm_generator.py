@@ -5,9 +5,12 @@ Generates industry-specific project names, task names, comments, and more.
 """
 
 import os
-from typing import Dict, List, Optional
-from datetime import datetime
+from typing import Dict, List, Optional, Any
+from datetime import datetime, timedelta
 import anthropic
+import json
+import random
+import re
 
 
 class LLMGenerator:
@@ -126,6 +129,24 @@ class LLMGenerator:
             return "New Task"
         elif "comment" in prompt.lower():
             return "Working on this."
+        elif "group name" in prompt.lower():
+            # Generate a more appropriate group name fallback
+            if "team" in prompt.lower():
+                return "Engineering - Core Team"
+            elif "role" in prompt.lower():
+                return "Engineering Managers"
+            elif "project" in prompt.lower():
+                return "Project Alpha"
+            elif "location" in prompt.lower():
+                return "San Francisco Office"
+            else:
+                return "Engineering Department"
+        elif "group description" in prompt.lower() or "description for" in prompt.lower():
+            return "Team responsible for core operations and strategic initiatives"
+        elif "profile update" in prompt.lower() or "user profile update" in prompt.lower():
+            return "Profile updated as part of organizational changes"
+        elif "activity" in prompt.lower():
+            return "User activity recorded in system"
         return "Content generated"
 
     def generate_project_name(self, industry: str, context: Optional[str] = None) -> str:
@@ -477,8 +498,29 @@ Return ONLY the comment, nothing else."""
         industry_context = self.INDUSTRIES.get(industry.lower(), "General business")
 
         if not existing_comments:
-            # First comment - use starter template
-            prompt = f"""Generate a brief, natural initial comment from {user_name} about starting work on task: "{task_name}" in project: "{project_name}"
+            # First comment - 50% chance to be a question/request (to start conversations)
+            # This ensures conversations begin with questions that need responses
+            import random
+            is_question = random.random() < 0.5
+
+            if is_question:
+                prompt = f"""Generate a brief, natural comment from {user_name} about task: "{task_name}" in project: "{project_name}"
+Context: {industry_context}
+
+The comment should be a QUESTION or REQUEST for information/update. 1-2 sentences, casual but professional.
+
+Examples:
+- "Can someone give me more context on this task?"
+- "What's the current status on this?"
+- "Do we have any blockers here?"
+- "Anyone started looking at this yet?"
+- "Need any help with this one?"
+- "What's the priority level for this?"
+- "Should I coordinate with anyone before starting?"
+
+Return ONLY the comment, nothing else."""
+            else:
+                prompt = f"""Generate a brief, natural initial comment from {user_name} about starting work on task: "{task_name}" in project: "{project_name}"
 Context: {industry_context}
 
 The comment should be 1-2 sentences, casual but professional.
@@ -500,13 +542,64 @@ Return ONLY the comment, nothing else."""
             last_commenter = last_comment.get("user", "Unknown")
             last_comment_text = last_comment.get("comment", "")
 
-            # Build conversation history string
+            # Build FULL conversation history string (not just last 3)
+            # This gives LLM complete context to avoid any repetition
             conversation_history = "\n".join([
                 f"- {c.get('user', 'Unknown')}: \"{c.get('comment', '')}\""
-                for c in existing_comments[-3:]  # Last 3 comments for context
+                for c in existing_comments  # ALL comments for full context
             ])
 
-            prompt = f"""Generate a natural follow-up comment from {user_name} on task: "{task_name}"
+            # Extract all opening phrases from existing comments to avoid repetition
+            used_phrases = []
+            for comment in existing_comments:
+                comment_text = comment.get("comment", "")
+                # Extract first 5 words as the "opening phrase"
+                words = comment_text.split()[:5]
+                if words:
+                    used_phrases.append(" ".join(words))
+
+            # Detect if last comment was a question (contains '?')
+            last_was_question = '?' in last_comment_text
+
+            # Detect if this user was mentioned/directed to
+            user_was_mentioned = user_name.lower() in last_comment_text.lower()
+
+            if last_was_question:
+                # If last comment was a question, generate a helpful ANSWER
+                # Add context if the question was specifically directed at this user
+                directed_note = ""
+                if user_was_mentioned:
+                    directed_note = f"\n\nNOTE: {last_commenter} specifically asked YOU ({user_name}) this question. Your response should acknowledge this."
+
+                prompt = f"""Generate a natural ANSWER from {user_name} responding to {last_commenter}'s question on task: "{task_name}"
+Context: {industry_context}
+Project: {project_name}
+
+Recent conversation history:
+{conversation_history}
+
+{last_commenter} asked: "{last_comment_text}"{directed_note}
+
+Generate a helpful, specific answer that:
+- Directly addresses the question
+- Provides useful information or context
+- Is 1-2 sentences, casual but professional
+- Moves the conversation forward
+
+Examples of good answers:
+- "It's medium priority - should be done by Friday."
+- "No blockers yet, I'm about halfway through."
+- "Yeah, let's sync with the design team first."
+- "I haven't started yet, planning to tackle it tomorrow."
+- "No help needed for now, thanks! I'll reach out if I hit any issues."
+
+Return ONLY the comment, nothing else."""
+            else:
+                # Otherwise, generate a follow-up (which might be a question or acknowledgement)
+                # Build list of used phrases to explicitly avoid
+                phrases_list = "\n".join([f"  - \"{phrase}...\"" for phrase in used_phrases]) if used_phrases else "  (none yet)"
+
+                prompt = f"""Generate a natural follow-up comment from {user_name} on task: "{task_name}"
 Context: {industry_context}
 Project: {project_name}
 
@@ -515,18 +608,25 @@ Recent conversation history:
 
 Last comment was from {last_commenter}: "{last_comment_text}"
 
-CRITICAL: The comment MUST use a DIFFERENT opening phrase than any previous comment. Generate a contextual response that:
-- Uses a UNIQUE opening phrase (avoid "Sounds good", "Thanks", "Great" if already used)
-- Moves the conversation forward naturally
-- Is 1-2 sentences
-- Sounds like real workplace communication
+ALREADY USED opening phrases that you MUST NOT repeat:
+{phrases_list}
 
-VARY your opening approach - use different structures:
-- Acknowledgement: "Got it, I'll...", "Understood, will...", "Makes sense, I can..."
-- Direct action: "I'll review...", "Let me...", "Working on..."
-- Question/offer: "Need any help with...", "Want me to...", "Should I..."
-- Status update: "I've already...", "Just finished...", "Almost done with..."
-- Simple confirmation: "Done.", "On it.", "Will do."
+CRITICAL RULES:
+1. DO NOT use any of the phrases listed above or anything similar
+2. DO NOT repeat concepts already stated (like "let's dive into", "get started", "looking forward")
+3. If someone already asked for an update, don't ask again - respond differently
+4. Generate a contextual response that:
+   - Uses a COMPLETELY UNIQUE opening phrase
+   - Moves the conversation forward naturally
+   - Is 1-2 sentences maximum
+   - Sounds like real workplace communication
+
+VARY your approach - try different structures:
+- Specific question: "What's blocking this?", "Need design review first?", "ETA on requirements?"
+- Status update: "Halfway through the analysis", "Found 3 integration points", "Scheduled for tomorrow"
+- Coordination: "I'll sync with the team", "Let's review together Friday", "Can you handle X while I do Y?"
+- Direct action: "Starting now", "Reviewing the specs", "Testing the integration"
+- Simple acknowledgment: "On it", "Will do", "Noted"
 
 Return ONLY the comment, nothing else."""
 
@@ -634,6 +734,523 @@ Return the subtasks as a numbered list:
         self.total_input_tokens = 0
         self.total_output_tokens = 0
 
+    # ============================================================================
+    # OKTA-SPECIFIC CONTENT GENERATION METHODS
+    # ============================================================================
+
+    def generate_user_profile(
+        self,
+        industry: str,
+        department: str,
+        title: str,
+        org_size: str = "midsize"
+    ) -> Dict[str, Any]:
+        """
+        Generate realistic Okta user profile with diverse, culturally appropriate names.
+
+        Args:
+            industry: Industry type (e.g., 'healthcare', 'technology', 'finance')
+            department: Department name (e.g., 'Engineering', 'Sales', 'Clinical')
+            title: Job title (e.g., 'Software Engineer', 'Sales Manager')
+            org_size: Organization size ('startup', 'midsize', 'enterprise')
+
+        Returns:
+            Dictionary with user profile data in JSON format
+
+        Example:
+            >>> profile = generator.generate_user_profile(
+            ...     industry='technology',
+            ...     department='Engineering',
+            ...     title='Senior Software Engineer',
+            ...     org_size='midsize'
+            ... )
+            >>> print(profile['firstName'])
+            'Priya'
+        """
+        industry_context = self.INDUSTRIES.get(industry.lower(), "General business")
+
+        # Build context for org size
+        org_size_context = {
+            "startup": "small startup (10-50 employees, flat structure)",
+            "midsize": "mid-size company (100-500 employees, established departments)",
+            "enterprise": "large enterprise (1000+ employees, complex hierarchy)"
+        }.get(org_size, "mid-size company")
+
+        prompt = f"""Generate a realistic user profile for an employee at a {org_size_context} in the {industry_context}.
+
+Department: {department}
+Job Title: {title}
+Organization Size: {org_size}
+
+Create a diverse, culturally appropriate profile with:
+1. First and last name (be culturally diverse - use names from various ethnicities and backgrounds)
+2. Professional email address
+3. Mobile phone number (US format)
+4. Employee details appropriate for the org size
+
+Return ONLY valid JSON with this structure:
+{{
+    "firstName": "string",
+    "lastName": "string",
+    "email": "string",
+    "login": "string",
+    "mobilePhone": "string",
+    "employeeNumber": "string",
+    "manager": "string (manager's full name)",
+    "location": "string (city, state)",
+    "startDate": "YYYY-MM-DD",
+    "division": "string",
+    "costCenter": "string"
+}}
+
+Important:
+- Generate realistic, diverse names from various cultures (Asian, European, African, Latino, etc.)
+- Email should use company domain (e.g., @company.com, @techcorp.io)
+- Phone numbers should be realistic US format (+1-XXX-XXX-XXXX)
+- Start date should be between 6 months and 5 years ago
+- Manager name should also be culturally diverse
+- Location should be a real US city appropriate for the industry"""
+
+        try:
+            response = self._call_claude(prompt, max_tokens=400)
+
+            # Extract JSON from response
+            json_match = re.search(r'\{[^{}]*\{?[^{}]*\}?[^{}]*\}', response, re.DOTALL)
+            if json_match:
+                profile_data = json.loads(json_match.group())
+
+                # Validate and clean the data
+                required_fields = ["firstName", "lastName", "email", "login"]
+                if all(field in profile_data for field in required_fields):
+                    # Ensure login matches email if not specified differently
+                    if not profile_data.get("login"):
+                        profile_data["login"] = profile_data["email"]
+
+                    # Add department and title to profile
+                    profile_data["department"] = department
+                    profile_data["title"] = title
+
+                    return profile_data
+
+        except (json.JSONDecodeError, Exception) as e:
+            print(f"Error generating user profile via LLM: {e}")
+
+        # Fallback to template-based generation
+        return self._generate_fallback_user_profile(industry, department, title, org_size)
+
+    def _generate_fallback_user_profile(
+        self,
+        industry: str,
+        department: str,
+        title: str,
+        org_size: str
+    ) -> Dict[str, Any]:
+        """Generate fallback user profile using templates."""
+        # Diverse name pools
+        first_names = [
+            "Priya", "Chen", "Maria", "Ahmed", "Yuki", "Oluwaseun", "Emma", "Carlos",
+            "Fatima", "Raj", "Sofia", "Ibrahim", "Mei", "Diego", "Aisha", "Viktor",
+            "Lucia", "Mohammed", "Yuna", "Gabriel", "Amara", "Hiroshi", "Isabella"
+        ]
+        last_names = [
+            "Sharma", "Wang", "Rodriguez", "Hassan", "Tanaka", "Adeyemi", "Johnson",
+            "Gonzalez", "Al-Rahman", "Patel", "Silva", "Okonkwo", "Kim", "Martinez",
+            "Nguyen", "Petrov", "Cohen", "Kumar", "Li", "Thompson", "Yamamoto"
+        ]
+
+        locations = {
+            "startup": ["San Francisco, CA", "Austin, TX", "New York, NY"],
+            "midsize": ["San Francisco, CA", "New York, NY", "Chicago, IL", "Austin, TX"],
+            "enterprise": ["San Francisco, CA", "New York, NY", "London, UK", "Singapore", "Tokyo, Japan"]
+        }
+
+        first_name = random.choice(first_names)
+        last_name = random.choice(last_names)
+
+        # Generate email with realistic domain
+        domains = ["company.com", "techcorp.io", "enterprise.net", "organization.org"]
+        email = f"{first_name.lower()}.{last_name.lower()}@{random.choice(domains)}"
+
+        # Generate phone number
+        area_code = random.choice(["415", "212", "512", "312", "408", "650"])
+        phone = f"+1-{area_code}-{random.randint(100,999):03d}-{random.randint(1000,9999):04d}"
+
+        # Generate employee number
+        emp_prefix = {"startup": "EMP", "midsize": "MID", "enterprise": "ENT"}.get(org_size, "EMP")
+        emp_number = f"{emp_prefix}-{random.randint(10000, 99999)}"
+
+        # Generate manager name (also diverse)
+        manager_first = random.choice(first_names)
+        manager_last = random.choice(last_names)
+
+        # Generate start date
+        days_ago = random.randint(180, 1825)  # 6 months to 5 years
+        start_date = (datetime.now() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+
+        return {
+            "firstName": first_name,
+            "lastName": last_name,
+            "email": email,
+            "login": email,
+            "mobilePhone": phone,
+            "employeeNumber": emp_number,
+            "manager": f"{manager_first} {manager_last}",
+            "location": random.choice(locations.get(org_size, locations["midsize"])),
+            "startDate": start_date,
+            "division": department,
+            "costCenter": f"{department[:3].upper()}-{random.randint(100, 999)}",
+            "department": department,
+            "title": title
+        }
+
+    def generate_group_name(
+        self,
+        industry: str,
+        department: str,
+        group_type: str = "department"
+    ) -> str:
+        """
+        Generate realistic Okta group name based on context.
+
+        Args:
+            industry: Industry type (e.g., 'healthcare', 'technology')
+            department: Department name (e.g., 'Engineering', 'Sales')
+            group_type: Type of group - 'department', 'team', 'role', 'project', 'location'
+
+        Returns:
+            Generated group name string
+
+        Example:
+            >>> name = generator.generate_group_name(
+            ...     industry='technology',
+            ...     department='Engineering',
+            ...     group_type='team'
+            ... )
+            >>> print(name)
+            'Engineering - Platform Team'
+        """
+        industry_context = self.INDUSTRIES.get(industry.lower(), "General business")
+
+        group_type_descriptions = {
+            "department": "main department group",
+            "team": "sub-team within the department",
+            "role": "role-based access group (e.g., Managers, Individual Contributors)",
+            "project": "project-based temporary group",
+            "location": "office/location-based group"
+        }
+
+        prompt = f"""Generate a realistic Okta group name for a {industry_context}.
+
+Context:
+- Department: {department}
+- Group Type: {group_type} ({group_type_descriptions.get(group_type, 'general group')})
+- Industry: {industry_context}
+
+Generate a professional group name that follows these patterns:
+- Department groups: "{department}" or "{department} Department"
+- Team groups: "{department} - [Team Name]" (e.g., "Engineering - Platform Team")
+- Role groups: "[Role] - {department}" or just "[Role]" (e.g., "Senior Engineers", "Managers - Sales")
+- Project groups: "Project - [Project Name]" or "[Project Name] Team"
+- Location groups: "{department} - [Location]" or "[Location] Office"
+
+The name should be:
+- 2-6 words long
+- Professional and clear
+- Specific to the {industry} industry where relevant
+
+Return ONLY the group name, nothing else."""
+
+        try:
+            response = self._call_claude(prompt, max_tokens=50)
+            # Validate response
+            if response and len(response) < 100 and not any(char in response for char in ['{', '}', '[', ']']):
+                return response.strip()
+        except Exception:
+            pass  # Fall through to fallback
+
+        # Fallback to template-based generation
+        return self._generate_fallback_group_name(industry, department, group_type)
+
+    def _generate_fallback_group_name(
+        self,
+        industry: str,
+        department: str,
+        group_type: str
+    ) -> str:
+        """Generate fallback group name using templates."""
+        templates = {
+            "department": [f"{department}", f"{department} Department", f"{department} Team"],
+            "team": [
+                f"{department} - Core Team",
+                f"{department} - Platform Team",
+                f"{department} - Infrastructure",
+                f"{department} - Product Team"
+            ],
+            "role": [
+                f"{department} Managers",
+                f"Senior {department}",
+                f"{department} Leads",
+                f"{department} Individual Contributors"
+            ],
+            "project": [
+                f"Project Alpha - {department}",
+                f"{department} - Q4 Initiative",
+                f"Innovation Team - {department}"
+            ],
+            "location": [
+                f"{department} - San Francisco",
+                f"{department} - Remote",
+                f"{department} - East Coast"
+            ]
+        }
+
+        options = templates.get(group_type, templates["department"])
+        return random.choice(options)
+
+    def generate_group_description(
+        self,
+        industry: str,
+        group_name: str,
+        group_type: str = "department"
+    ) -> str:
+        """
+        Generate professional group description for Okta.
+
+        Args:
+            industry: Industry type
+            group_name: Name of the group
+            group_type: Type of group
+
+        Returns:
+            Generated group description string
+
+        Example:
+            >>> desc = generator.generate_group_description(
+            ...     industry='technology',
+            ...     group_name='Engineering - Platform Team',
+            ...     group_type='team'
+            ... )
+            >>> print(desc)
+            'Platform engineering team responsible for core infrastructure...'
+        """
+        industry_context = self.INDUSTRIES.get(industry.lower(), "General business")
+
+        prompt = f"""Generate a concise, professional description for an Okta group in a {industry_context}.
+
+Group Name: {group_name}
+Group Type: {group_type}
+Industry: {industry_context}
+
+Create a 1-2 sentence description that:
+- Explains the group's purpose and responsibilities
+- Is specific to the {industry} industry
+- Uses professional language
+- Is informative but concise
+
+Examples:
+- "Platform engineering team responsible for core infrastructure and developer tools"
+- "Sales representatives covering California, Oregon, and Washington territories"
+- "ICU nursing staff at Memorial Hospital - San Francisco campus"
+- "Managers across all engineering teams with approval and budget authority"
+
+Return ONLY the description, nothing else."""
+
+        response = self._call_claude(prompt, max_tokens=100)
+
+        # Validate response
+        if response and len(response) < 300:
+            return response.strip()
+
+        # Fallback
+        fallback_descriptions = {
+            "department": f"Department group for {group_name} team members and resources",
+            "team": f"Specialized team within the organization focused on specific deliverables",
+            "role": f"Role-based access group for managing permissions and responsibilities",
+            "project": f"Project team collaborating on strategic initiatives",
+            "location": f"Location-based group for regional coordination and resources"
+        }
+        return fallback_descriptions.get(group_type, f"Group for {group_name} in {industry} organization")
+
+    def generate_profile_update_reason(
+        self,
+        update_type: str,
+        old_value: Optional[str] = None,
+        new_value: Optional[str] = None
+    ) -> str:
+        """
+        Generate realistic reason for user profile update.
+
+        Args:
+            update_type: Type of update - 'promotion', 'transfer', 'relocation', 'manager_change'
+            old_value: Previous value (e.g., old title, old department)
+            new_value: New value
+
+        Returns:
+            Generated update reason string
+
+        Example:
+            >>> reason = generator.generate_profile_update_reason(
+            ...     update_type='promotion',
+            ...     old_value='Software Engineer',
+            ...     new_value='Senior Software Engineer'
+            ... )
+            >>> print(reason)
+            'Promoted from Software Engineer to Senior Software Engineer'
+        """
+        update_contexts = {
+            "promotion": f"title change from {old_value} to {new_value} (promotion)",
+            "transfer": f"department transfer from {old_value} to {new_value}",
+            "relocation": f"office relocation from {old_value} to {new_value}",
+            "manager_change": f"reporting structure change to {new_value}"
+        }
+
+        context = update_contexts.get(update_type, "profile update")
+
+        prompt = f"""Generate a brief, professional description for a user profile update.
+
+Update Type: {update_type}
+Context: {context}
+
+Generate a 1-sentence description that would appear in an activity log.
+Make it professional and informative.
+
+Examples:
+- "Promoted from Senior Engineer to Engineering Manager"
+- "Transferred from Sales to Customer Success as part of reorganization"
+- "Relocated from New York to Austin office"
+- "Reporting structure changed - now reports to Sarah Johnson"
+- "Role change due to internal mobility program"
+
+Return ONLY the description, nothing else."""
+
+        response = self._call_claude(prompt, max_tokens=80)
+
+        # Validate and return
+        if response and len(response) < 200:
+            return response.strip()
+
+        # Fallback
+        fallbacks = {
+            "promotion": f"Promoted from {old_value} to {new_value}",
+            "transfer": f"Transferred from {old_value} to {new_value}",
+            "relocation": f"Relocated from {old_value} to {new_value}",
+            "manager_change": f"Reporting structure updated - now reports to {new_value}"
+        }
+
+        return fallbacks.get(update_type, "Profile updated")
+
+    def generate_activity_description(
+        self,
+        activity_type: str,
+        context: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Generate professional activity description for Okta logs.
+
+        Args:
+            activity_type: Type of activity - 'onboarding', 'offboarding', 'app_assignment',
+                          'group_change', 'password_reset', 'mfa_enrollment'
+            context: Additional context (e.g., user name, app name, group name)
+
+        Returns:
+            Generated activity description string
+
+        Example:
+            >>> desc = generator.generate_activity_description(
+            ...     activity_type='onboarding',
+            ...     context={'user': 'John Smith', 'department': 'Engineering'}
+            ... )
+            >>> print(desc)
+            'New employee John Smith onboarded to Engineering department'
+        """
+        context = context or {}
+
+        activity_contexts = {
+            "onboarding": f"new employee {context.get('user', 'user')} joining {context.get('department', 'organization')}",
+            "offboarding": f"employee {context.get('user', 'user')} leaving organization",
+            "app_assignment": f"application {context.get('app', 'application')} assigned to {context.get('user', 'user')}",
+            "group_change": f"user {context.get('user', 'user')} group membership change",
+            "password_reset": f"password reset for {context.get('user', 'user')}",
+            "mfa_enrollment": f"MFA enrollment for {context.get('user', 'user')}"
+        }
+
+        activity_context = activity_contexts.get(activity_type, "user activity")
+
+        prompt = f"""Generate a professional activity log description for Okta.
+
+Activity Type: {activity_type}
+Context: {activity_context}
+
+Create a brief, professional description (1 sentence) that would appear in an activity log.
+
+Examples:
+- "New employee John Smith onboarded to Engineering department with standard access provisioning"
+- "User Sarah Johnson offboarded - all access revoked and account deactivated"
+- "Salesforce application assigned to Maria Rodriguez as part of Sales team onboarding"
+- "User added to 'Engineering - Platform Team' group for project collaboration"
+- "Self-service password reset completed successfully"
+- "Okta Verify MFA enrollment completed for enhanced security"
+
+Return ONLY the description, nothing else."""
+
+        response = self._call_claude(prompt, max_tokens=100)
+
+        # Validate and return
+        if response and len(response) < 200:
+            return response.strip()
+
+        # Fallback descriptions
+        fallbacks = {
+            "onboarding": f"New employee {context.get('user', 'user')} onboarded to {context.get('department', 'organization')}",
+            "offboarding": f"Employee {context.get('user', 'user')} offboarded from organization",
+            "app_assignment": f"Application {context.get('app', 'assigned')} to {context.get('user', 'user')}",
+            "group_change": f"Group membership updated for {context.get('user', 'user')}",
+            "password_reset": f"Password reset completed for {context.get('user', 'user')}",
+            "mfa_enrollment": f"MFA enrollment completed for {context.get('user', 'user')}"
+        }
+
+        return fallbacks.get(activity_type, "User activity recorded")
+
+    def validate_user_profile(self, profile: Dict[str, Any]) -> bool:
+        """
+        Validate generated user profile data.
+
+        Args:
+            profile: User profile dictionary
+
+        Returns:
+            True if profile is valid, False otherwise
+        """
+        # Check required fields
+        required_fields = ["firstName", "lastName", "email", "login"]
+        if not all(field in profile for field in required_fields):
+            return False
+
+        # Validate email format
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, profile.get("email", "")):
+            return False
+
+        # Validate phone format if present
+        if "mobilePhone" in profile:
+            phone = profile["mobilePhone"]
+            phone_pattern = r'^\+?1?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$'
+            if not re.match(phone_pattern, phone.replace(" ", "")):
+                return False
+
+        # Validate date format if present
+        if "startDate" in profile:
+            try:
+                datetime.strptime(profile["startDate"], '%Y-%m-%d')
+            except ValueError:
+                return False
+
+        # Check name lengths
+        if len(profile.get("firstName", "")) > 50 or len(profile.get("lastName", "")) > 50:
+            return False
+
+        return True
+
 
 # Example usage
 if __name__ == "__main__":
@@ -648,7 +1265,7 @@ if __name__ == "__main__":
 
     # Test project name generation
     print("=" * 60)
-    print("Testing LLM Generator")
+    print("Testing LLM Generator - Asana Methods")
     print("=" * 60)
 
     print("\nGenerating project name for Healthcare:")
@@ -666,6 +1283,60 @@ if __name__ == "__main__":
     print("\nGenerating comment (blocked):")
     blocked = generator.generate_comment_blocked("Alice", task_name, "healthcare")
     print(f"  -> {blocked}")
+
+    # Test Okta methods
+    print("\n" + "=" * 60)
+    print("Testing LLM Generator - Okta Methods")
+    print("=" * 60)
+
+    print("\nGenerating user profile (Technology/Engineering):")
+    profile = generator.generate_user_profile(
+        industry="technology",
+        department="Engineering",
+        title="Senior Software Engineer",
+        org_size="midsize"
+    )
+    if generator.validate_user_profile(profile):
+        print(f"  Name: {profile.get('firstName')} {profile.get('lastName')}")
+        print(f"  Email: {profile.get('email')}")
+        print(f"  Title: {profile.get('title')}")
+        print(f"  Manager: {profile.get('manager')}")
+    else:
+        print("  Invalid profile generated!")
+
+    print("\nGenerating group name (Team):")
+    group_name = generator.generate_group_name(
+        industry="technology",
+        department="Engineering",
+        group_type="team"
+    )
+    print(f"  -> {group_name}")
+
+    print("\nGenerating group description:")
+    group_desc = generator.generate_group_description(
+        industry="technology",
+        group_name=group_name,
+        group_type="team"
+    )
+    print(f"  -> {group_desc}")
+
+    print("\nGenerating profile update reason (Promotion):")
+    update_reason = generator.generate_profile_update_reason(
+        update_type="promotion",
+        old_value="Software Engineer",
+        new_value="Senior Software Engineer"
+    )
+    print(f"  -> {update_reason}")
+
+    print("\nGenerating activity description (Onboarding):")
+    activity_desc = generator.generate_activity_description(
+        activity_type="onboarding",
+        context={
+            "user": "John Smith",
+            "department": "Engineering"
+        }
+    )
+    print(f"  -> {activity_desc}")
 
     print("\nAPI Usage Stats:")
     stats = generator.get_usage_stats()

@@ -14,8 +14,10 @@ import json
 
 from continuous.state_manager import StateManager
 from continuous.llm_generator import LLMGenerator
-from continuous.asana_client import AsanaClientPool
-from continuous.service import ContinuousService
+from continuous.connections.asana_connection import AsanaClientPool
+from continuous.connections.okta_connection import OktaClientPool
+from continuous.services.asana_service import AsanaService, ContinuousService
+from continuous.services.okta_service import OktaService
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for local development
@@ -62,34 +64,57 @@ def restart_running_jobs():
                     continue
 
                 config = state.get('config', {})
+                connection_type = state.get('connection_type', 'asana')
 
                 # Recreate the service components
                 try:
-                    llm_generator = LLMGenerator(config['anthropic_api_key'])
+                    llm_generator = LLMGenerator(config.get('anthropic_api_key', ''))
 
-                    # Parse user tokens
-                    user_tokens = {}
-                    for user_data in config['user_tokens']:
-                        user_tokens[user_data['name']] = user_data['token']
+                    # Route based on connection type
+                    if connection_type == 'asana':
+                        # Parse user tokens for Asana
+                        user_tokens = {}
+                        for user_data in config['user_tokens']:
+                            user_tokens[user_data['name']] = user_data['token']
 
-                    client_pool = AsanaClientPool(user_tokens)
+                        client_pool = AsanaClientPool(user_tokens)
 
-                    if len(client_pool.get_valid_clients()) == 0:
-                        print(f"⚠ Skipping job {job_id}: No valid API tokens")
+                        if len(client_pool.get_valid_clients()) == 0:
+                            print(f"⚠ Skipping job {job_id}: No valid Asana API tokens")
+                            continue
+
+                        # Create Asana service with existing job_id
+                        service = ContinuousService.__new__(ContinuousService)
+                        service.config = config
+                        service.state_manager = state_manager
+                        service.llm = llm_generator
+                        service.client_pool = client_pool
+                        service.scheduler = __import__('continuous.scheduler', fromlist=['ActivityScheduler']).ActivityScheduler(config)
+                        service.job_id = job_id
+                        service.state = state
+                        service.running = False
+                        service.paused = (job_summary['status'] in ['paused', 'stopped'])
+                        service.deleted = False  # Initialize deleted flag
+
+                    elif connection_type == 'okta':
+                        # Create Okta client pool
+                        okta_pool = OktaClientPool(config['user_tokens'])
+
+                        if len(okta_pool.get_valid_clients()) == 0:
+                            print(f"⚠ Skipping job {job_id}: No valid Okta API tokens")
+                            continue
+
+                        # Create Okta service
+                        service = OktaService(config, state_manager, llm_generator, okta_pool)
+                        service.job_id = job_id
+                        service.state = state
+                        service.running = False
+                        service.paused = (job_summary['status'] in ['paused', 'stopped'])
+                        service.deleted = False
+
+                    else:
+                        print(f"⚠ Skipping job {job_id}: Unsupported connection type '{connection_type}'")
                         continue
-
-                    # Create service with existing job_id
-                    service = ContinuousService.__new__(ContinuousService)
-                    service.config = config
-                    service.state_manager = state_manager
-                    service.llm = llm_generator
-                    service.client_pool = client_pool
-                    service.scheduler = __import__('continuous.scheduler', fromlist=['ActivityScheduler']).ActivityScheduler(config)
-                    service.job_id = job_id
-                    service.state = state
-                    service.running = False
-                    service.paused = (job_summary['status'] in ['paused', 'stopped'])
-                    service.deleted = False  # Initialize deleted flag
 
                     # Start service in background thread
                     thread = threading.Thread(target=run_service_in_thread, args=(service,), daemon=True)
@@ -100,7 +125,7 @@ def restart_running_jobs():
                     service_threads[job_id] = thread
 
                     status_emoji = "⏸" if service.paused else "▶️"
-                    print(f"{status_emoji} Restarted job {job_id} ({config.get('industry', 'unknown')})")
+                    print(f"{status_emoji} Restarted {connection_type} job {job_id} ({config.get('industry', 'unknown')})")
                     restarted_count += 1
 
                 except Exception as e:
@@ -225,39 +250,88 @@ def get_activity_log(job_id):
 
 @app.route('/api/jobs/start', methods=['POST'])
 def start_job():
-    """Start a new continuous generation job."""
+    """Start a new continuous generation job (supports Asana and Okta)."""
     try:
         config = request.json
+        connection_type = config.get('connection_type', 'asana')
 
-        # Validate required fields
-        required = ['industry', 'workspace_gid', 'user_tokens', 'anthropic_api_key']
-        for field in required:
-            if field not in config:
+        # Validate connection-specific required fields
+        if connection_type == 'asana':
+            required = ['industry', 'workspace_gid', 'user_tokens', 'anthropic_api_key']
+            for field in required:
+                if field not in config:
+                    return jsonify({
+                        "success": False,
+                        "error": f"Missing required field for Asana: {field}"
+                    }), 400
+
+            # Initialize components
+            llm_generator = LLMGenerator(config['anthropic_api_key'])
+
+            # Parse user tokens
+            user_tokens = {}
+            for user_data in config['user_tokens']:
+                user_tokens[user_data['name']] = user_data['token']
+
+            client_pool = AsanaClientPool(user_tokens)
+
+            # Validate at least one valid client
+            if len(client_pool.get_valid_clients()) == 0:
                 return jsonify({
                     "success": False,
-                    "error": f"Missing required field: {field}"
+                    "error": "No valid Asana API tokens provided"
                 }), 400
 
-        # Initialize components
-        llm_generator = LLMGenerator(config['anthropic_api_key'])
+            # Create service
+            service = ContinuousService(config, state_manager, llm_generator, client_pool)
+            job_id = service.job_id
 
-        # Parse user tokens
-        user_tokens = {}
-        for user_data in config['user_tokens']:
-            user_tokens[user_data['name']] = user_data['token']
+        elif connection_type == 'okta':
+            required = ['industry', 'org_url', 'user_tokens', 'org_size', 'anthropic_api_key']
+            for field in required:
+                if field not in config:
+                    return jsonify({
+                        "success": False,
+                        "error": f"Missing required field for Okta: {field}"
+                    }), 400
 
-        client_pool = AsanaClientPool(user_tokens)
+            # Validate org_url format
+            if not config['org_url'].startswith('https://'):
+                return jsonify({
+                    "success": False,
+                    "error": "org_url must start with https://"
+                }), 400
 
-        # Validate at least one valid client
-        if len(client_pool.get_valid_clients()) == 0:
+            # Validate user_tokens have org_url
+            for token in config['user_tokens']:
+                if 'org_url' not in token:
+                    return jsonify({
+                        "success": False,
+                        "error": "Each user token must include org_url for Okta"
+                    }), 400
+
+            # Initialize components
+            llm_generator = LLMGenerator(config['anthropic_api_key'])
+
+            # Create Okta client pool
+            okta_pool = OktaClientPool(config['user_tokens'])
+
+            # Validate at least one valid client
+            if len(okta_pool.get_valid_clients()) == 0:
+                return jsonify({
+                    "success": False,
+                    "error": "No valid Okta API tokens provided"
+                }), 400
+
+            # Create Okta service
+            service = OktaService(config, state_manager, llm_generator, okta_pool)
+            job_id = service.job_id
+
+        else:
             return jsonify({
                 "success": False,
-                "error": "No valid Asana API tokens provided"
+                "error": f"Unsupported connection type: {connection_type}"
             }), 400
-
-        # Create service
-        service = ContinuousService(config, state_manager, llm_generator, client_pool)
-        job_id = service.job_id
 
         # Start service in background thread
         thread = threading.Thread(target=run_service_in_thread, args=(service,), daemon=True)
@@ -270,7 +344,8 @@ def start_job():
         return jsonify({
             "success": True,
             "job_id": job_id,
-            "message": f"Continuous generation started - Job ID: {job_id}"
+            "connection_type": connection_type,
+            "message": f"{connection_type.capitalize()} continuous generation started - Job ID: {job_id}"
         })
 
     except Exception as e:
@@ -404,7 +479,7 @@ def generate_now(job_id):
 
 @app.route('/api/jobs/<job_id>/cleanup', methods=['POST'])
 def cleanup_job(job_id):
-    """Clean up Asana data for a job."""
+    """Clean up platform data for a job (supports Asana and Okta)."""
     try:
         # Load state to get service config
         state = state_manager.load_state(job_id)
@@ -415,52 +490,92 @@ def cleanup_job(job_id):
             }), 404
 
         config = state.get('config', {})
+        connection_type = state.get('connection_type', 'asana')
 
         # Re-create service components for cleanup
-        llm_generator = LLMGenerator(config['anthropic_api_key'])
+        llm_generator = LLMGenerator(config.get('anthropic_api_key', ''))
 
-        user_tokens = {}
-        for user_data in config['user_tokens']:
-            user_tokens[user_data['name']] = user_data['token']
+        # Route based on connection type
+        if connection_type == 'asana':
+            user_tokens = {}
+            for user_data in config['user_tokens']:
+                user_tokens[user_data['name']] = user_data['token']
 
-        client_pool = AsanaClientPool(user_tokens)
+            client_pool = AsanaClientPool(user_tokens)
 
-        if len(client_pool.get_valid_clients()) == 0:
+            if len(client_pool.get_valid_clients()) == 0:
+                return jsonify({
+                    "success": False,
+                    "error": "No valid Asana API tokens available for cleanup"
+                }), 400
+
+            # Create temporary service for cleanup
+            service = ContinuousService.__new__(ContinuousService)
+            service.config = config
+            service.state_manager = state_manager
+            service.llm = llm_generator
+            service.client_pool = client_pool
+            service.job_id = job_id
+            service.state = state
+
+            # Initialize workspace-level object caches (required for cleanup)
+            service.workspace_custom_fields = {}
+            service.workspace_tags = {}
+            service.workspace_portfolios = {}
+
+            # Run cleanup synchronously in this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(service.cleanup_asana_data())
+            finally:
+                loop.close()
+
+            return jsonify({
+                "success": result["success"],
+                "deleted_projects": result.get("deleted_projects", 0),
+                "deleted_tasks": result.get("deleted_tasks", 0),
+                "deleted_subtasks": result.get("deleted_subtasks", 0),
+                "total_projects": result.get("total_projects", 0),
+                "failed_projects": result.get("failed_projects", [])
+            })
+
+        elif connection_type == 'okta':
+            # Create Okta client pool
+            okta_pool = OktaClientPool(config['user_tokens'])
+
+            if len(okta_pool.get_valid_clients()) == 0:
+                return jsonify({
+                    "success": False,
+                    "error": "No valid Okta API tokens available for cleanup"
+                }), 400
+
+            # Create Okta service for cleanup
+            service = OktaService(config, state_manager, llm_generator, okta_pool)
+            service.job_id = job_id
+            service.state = state
+
+            # Run cleanup synchronously in this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(service.cleanup_platform_data())
+            finally:
+                loop.close()
+
+            return jsonify({
+                "success": True,
+                "users_deleted": result.get("users_deleted", 0),
+                "groups_deleted": result.get("groups_deleted", 0),
+                "assignments_removed": result.get("assignments_removed", 0),
+                "errors": result.get("errors", [])
+            })
+
+        else:
             return jsonify({
                 "success": False,
-                "error": "No valid API tokens available for cleanup"
+                "error": f"Unsupported connection type: {connection_type}"
             }), 400
-
-        # Create temporary service for cleanup
-        service = ContinuousService.__new__(ContinuousService)
-        service.config = config
-        service.state_manager = state_manager
-        service.llm = llm_generator
-        service.client_pool = client_pool
-        service.job_id = job_id
-        service.state = state
-
-        # Initialize workspace-level object caches (required for cleanup)
-        service.workspace_custom_fields = {}
-        service.workspace_tags = {}
-        service.workspace_portfolios = {}
-
-        # Run cleanup synchronously in this thread
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            result = loop.run_until_complete(service.cleanup_asana_data())
-        finally:
-            loop.close()
-
-        return jsonify({
-            "success": result["success"],
-            "deleted_projects": result.get("deleted_projects", 0),
-            "deleted_tasks": result.get("deleted_tasks", 0),
-            "deleted_subtasks": result.get("deleted_subtasks", 0),
-            "total_projects": result.get("total_projects", 0),
-            "failed_projects": result.get("failed_projects", [])
-        })
 
     except Exception as e:
         import traceback
@@ -574,11 +689,10 @@ async def cleanup_entire_workspace(workspace_gid: str, all_clients, try_delete_w
 
     client = all_clients[0]  # Use first client for reading
 
-    # Step 1: Get all projects in workspace
+    # Step 1: Get all projects in workspace (with pagination)
     print(f"  Fetching all projects in workspace...")
     try:
-        response = client._make_request("GET", f"workspaces/{workspace_gid}/projects")
-        projects = response.get("data", [])
+        projects = client.get_workspace_projects(workspace_gid)
         print(f"  Found {len(projects)} project(s)")
     except Exception as e:
         print(f"  ✗ Error fetching projects: {e}")
@@ -652,7 +766,53 @@ async def cleanup_entire_workspace(workspace_gid: str, all_clients, try_delete_w
 
         await asyncio.sleep(0.2)
 
-    # Step 3: Delete portfolios
+    # Step 3: Delete orphaned tasks (tasks not in any project)
+    print(f"\n  Checking for orphaned tasks...")
+    try:
+        users = client.get_workspace_users(workspace_gid)
+        print(f"    Found {len(users)} user(s) to check")
+
+        orphaned_task_count = 0
+        for user in users:
+            user_gid = user.get("gid")
+            user_name = user.get("name", "Unknown User")
+
+            try:
+                # Get all tasks assigned to this user in the workspace
+                user_tasks = client.get_user_tasks_in_workspace(workspace_gid, user_gid)
+
+                if user_tasks:
+                    print(f"    Found {len(user_tasks)} task(s) for {user_name}")
+
+                    for task in user_tasks:
+                        task_gid = task.get("gid")
+                        task_name = task.get("name", "Unknown Task")
+
+                        try:
+                            # Try to delete the task
+                            if try_delete_with_clients(
+                                lambda c: c.delete_task(task_gid),
+                                f"orphaned task {task_name}"
+                            ):
+                                orphaned_task_count += 1
+                                deleted_tasks += 1
+                                print(f"      ✓ Deleted orphaned task: {task_name}")
+                            await asyncio.sleep(0.1)
+                        except Exception as e:
+                            print(f"      ⚠ Error deleting orphaned task {task_name}: {e}")
+
+            except Exception as e:
+                print(f"    ⚠ Error fetching tasks for user {user_name}: {e}")
+
+        if orphaned_task_count > 0:
+            print(f"    ✓ Deleted {orphaned_task_count} orphaned task(s)")
+        else:
+            print(f"    No orphaned tasks found")
+
+    except Exception as e:
+        print(f"    ⚠ Error processing orphaned tasks: {e}")
+
+    # Step 4: Delete portfolios
     print(f"\n  Deleting portfolios...")
     try:
         # Collect portfolios from all users (since portfolios are owned by specific users)
@@ -685,7 +845,7 @@ async def cleanup_entire_workspace(workspace_gid: str, all_clients, try_delete_w
     except Exception as e:
         print(f"    ⚠ Error processing portfolios: {e}")
 
-    # Step 4: Delete custom fields
+    # Step 5: Delete custom fields
     print(f"\n  Deleting custom fields...")
     try:
         custom_fields = client.get_workspace_custom_fields(workspace_gid)
@@ -706,7 +866,7 @@ async def cleanup_entire_workspace(workspace_gid: str, all_clients, try_delete_w
     except Exception as e:
         print(f"    ⚠ Error processing custom fields: {e}")
 
-    # Step 5: Delete tags
+    # Step 6: Delete tags
     print(f"\n  Deleting tags...")
     try:
         tags = client.get_workspace_tags(workspace_gid)
@@ -833,35 +993,94 @@ def delete_job(job_id):
 
 @app.route('/api/validate_token', methods=['POST'])
 def validate_token():
-    """Validate an Asana API token."""
+    """Validate an API token (supports Asana and Okta)."""
     try:
         data = request.json
-        api_key = data.get('api_key')
+        connection_type = data.get('connection_type', 'asana')
 
-        if not api_key:
-            return jsonify({
-                "success": False,
-                "error": "No API key provided"
-            }), 400
+        if connection_type == 'asana':
+            api_key = data.get('api_key')
 
-        from continuous.asana_client import AsanaClient
-        client = AsanaClient(api_key)
+            if not api_key:
+                return jsonify({
+                    "success": False,
+                    "error": "No API key provided"
+                }), 400
 
-        if client.validate_token():
-            user_info = client.get_user_info()
-            return jsonify({
-                "success": True,
-                "valid": True,
-                "user": {
-                    "name": user_info.get("name"),
-                    "email": user_info.get("email")
-                }
-            })
+            from continuous.asana_client import AsanaClient
+            client = AsanaClient(api_key)
+
+            if client.validate_token():
+                user_info = client.get_user_info()
+                return jsonify({
+                    "success": True,
+                    "valid": True,
+                    "connection_type": "asana",
+                    "user": {
+                        "name": user_info.get("name"),
+                        "email": user_info.get("email")
+                    }
+                })
+            else:
+                return jsonify({
+                    "success": True,
+                    "valid": False,
+                    "connection_type": "asana"
+                })
+
+        elif connection_type == 'okta':
+            token = data.get('token') or data.get('api_key')
+            org_url = data.get('org_url')
+
+            if not token:
+                return jsonify({
+                    "success": False,
+                    "error": "No token provided"
+                }), 400
+
+            if not org_url:
+                return jsonify({
+                    "success": False,
+                    "error": "No org_url provided"
+                }), 400
+
+            from continuous.connections.okta_connection import OktaConnection
+
+            try:
+                client = OktaConnection(token, org_url, "validator")
+
+                if client.validate_token():
+                    user_info = client.get_user_info()
+                    profile = user_info.get("profile", {})
+                    return jsonify({
+                        "success": True,
+                        "valid": True,
+                        "connection_type": "okta",
+                        "user": {
+                            "name": f"{profile.get('firstName', '')} {profile.get('lastName', '')}".strip(),
+                            "email": profile.get("email"),
+                            "id": user_info.get("id")
+                        }
+                    })
+                else:
+                    return jsonify({
+                        "success": True,
+                        "valid": False,
+                        "connection_type": "okta"
+                    })
+            except Exception as e:
+                return jsonify({
+                    "success": False,
+                    "valid": False,
+                    "connection_type": "okta",
+                    "error": str(e)
+                }), 401
+
         else:
             return jsonify({
-                "success": True,
-                "valid": False
-            })
+                "success": False,
+                "error": f"Unsupported connection type: {connection_type}"
+            }), 400
 
     except Exception as e:
         return jsonify({
@@ -872,7 +1091,7 @@ def validate_token():
 
 @app.route('/api/workspaces', methods=['POST'])
 def get_workspaces():
-    """Get workspaces for an API key."""
+    """Get workspaces for an Asana API key."""
     try:
         data = request.json
         api_key = data.get('api_key')
@@ -904,19 +1123,267 @@ def get_workspaces():
         }), 500
 
 
+@app.route('/api/okta/orgs', methods=['POST'])
+def get_okta_orgs():
+    """Get Okta org information and validate access."""
+    try:
+        data = request.json
+        token = data.get('token') or data.get('api_key')
+        org_url = data.get('org_url')
+
+        if not token:
+            return jsonify({
+                "success": False,
+                "error": "No token provided"
+            }), 400
+
+        if not org_url:
+            return jsonify({
+                "success": False,
+                "error": "No org_url provided"
+            }), 400
+
+        from continuous.connections.okta_connection import OktaConnection
+
+        client = OktaConnection(token, org_url, "temp")
+
+        # Validate token first
+        if not client.validate_token():
+            return jsonify({
+                "success": False,
+                "error": "Invalid Okta token or org_url"
+            }), 401
+
+        # Get org information
+        user_info = client.get_user_info()
+
+        # Get counts for users, groups, and apps
+        users = client.list_users(limit=1)
+        groups = client.list_groups(limit=1)
+        apps = client.list_apps(limit=1)
+
+        # Extract org name from URL
+        org_name = org_url.replace("https://", "").replace(".okta.com", "").replace(".oktapreview.com", "")
+
+        return jsonify({
+            "success": True,
+            "org": {
+                "org_url": org_url,
+                "org_name": org_name,
+                "accessible": True,
+                "authenticated_user": {
+                    "name": f"{user_info.get('profile', {}).get('firstName', '')} {user_info.get('profile', {}).get('lastName', '')}".strip(),
+                    "email": user_info.get('profile', {}).get('email')
+                }
+            }
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/okta/apps', methods=['POST'])
+def get_okta_apps():
+    """List applications in Okta org."""
+    try:
+        data = request.json
+        token = data.get('token') or data.get('api_key')
+        org_url = data.get('org_url')
+        limit = data.get('limit', 50)
+
+        if not token:
+            return jsonify({
+                "success": False,
+                "error": "No token provided"
+            }), 400
+
+        if not org_url:
+            return jsonify({
+                "success": False,
+                "error": "No org_url provided"
+            }), 400
+
+        from continuous.connections.okta_connection import OktaConnection
+
+        client = OktaConnection(token, org_url, "temp")
+
+        # Validate token first
+        if not client.validate_token():
+            return jsonify({
+                "success": False,
+                "error": "Invalid Okta token or org_url"
+            }), 401
+
+        # List apps
+        apps = client.list_apps(limit=limit)
+
+        # Format app data for frontend
+        formatted_apps = []
+        for app in apps:
+            formatted_apps.append({
+                "id": app.get("id"),
+                "name": app.get("label") or app.get("name"),
+                "label": app.get("label"),
+                "status": app.get("status"),
+                "created": app.get("created"),
+                "lastUpdated": app.get("lastUpdated")
+            })
+
+        return jsonify({
+            "success": True,
+            "apps": formatted_apps,
+            "total": len(formatted_apps)
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/okta/users', methods=['POST'])
+def get_okta_users():
+    """List users in Okta org."""
+    try:
+        data = request.json
+        token = data.get('token') or data.get('api_key')
+        org_url = data.get('org_url')
+        limit = data.get('limit', 50)
+
+        if not token:
+            return jsonify({
+                "success": False,
+                "error": "No token provided"
+            }), 400
+
+        if not org_url:
+            return jsonify({
+                "success": False,
+                "error": "No org_url provided"
+            }), 400
+
+        from continuous.connections.okta_connection import OktaConnection
+
+        client = OktaConnection(token, org_url, "temp")
+
+        # Validate token first
+        if not client.validate_token():
+            return jsonify({
+                "success": False,
+                "error": "Invalid Okta token or org_url"
+            }), 401
+
+        # List users
+        users = client.list_users(limit=limit)
+
+        # Format user data for frontend
+        formatted_users = []
+        for user in users:
+            profile = user.get("profile", {})
+            formatted_users.append({
+                "id": user.get("id"),
+                "name": f"{profile.get('firstName', '')} {profile.get('lastName', '')}".strip(),
+                "email": profile.get("email"),
+                "login": profile.get("login"),
+                "status": user.get("status"),
+                "created": user.get("created"),
+                "lastUpdated": user.get("lastUpdated")
+            })
+
+        return jsonify({
+            "success": True,
+            "users": formatted_users,
+            "total": len(formatted_users)
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/okta/groups', methods=['POST'])
+def get_okta_groups():
+    """List groups in Okta org."""
+    try:
+        data = request.json
+        token = data.get('token') or data.get('api_key')
+        org_url = data.get('org_url')
+        limit = data.get('limit', 50)
+
+        if not token:
+            return jsonify({
+                "success": False,
+                "error": "No token provided"
+            }), 400
+
+        if not org_url:
+            return jsonify({
+                "success": False,
+                "error": "No org_url provided"
+            }), 400
+
+        from continuous.connections.okta_connection import OktaConnection
+
+        client = OktaConnection(token, org_url, "temp")
+
+        # Validate token first
+        if not client.validate_token():
+            return jsonify({
+                "success": False,
+                "error": "Invalid Okta token or org_url"
+            }), 401
+
+        # List groups
+        groups = client.list_groups(limit=limit)
+
+        # Format group data for frontend
+        formatted_groups = []
+        for group in groups:
+            profile = group.get("profile", {})
+            formatted_groups.append({
+                "id": group.get("id"),
+                "name": profile.get("name"),
+                "description": profile.get("description"),
+                "type": group.get("type"),
+                "created": group.get("created"),
+                "lastUpdated": group.get("lastUpdated")
+            })
+
+        return jsonify({
+            "success": True,
+            "groups": formatted_groups,
+            "total": len(formatted_groups)
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 @app.route('/api/health', methods=['GET'])
 def health():
     """Health check endpoint."""
     return jsonify({
         "success": True,
         "status": "running",
-        "active_jobs": len(running_services)
+        "active_jobs": len(running_services),
+        "connection_types_supported": ["asana", "okta"],
+        "version": "2.0.0"
     })
 
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("Asana Continuous Data Generator - API Server")
+    print("Multi-Platform Continuous Data Generator - API Server")
+    print("Supported Platforms: Asana, Okta")
     print("=" * 60)
     print()
     port = int(os.environ.get('PORT', 5001))

@@ -2,6 +2,10 @@
 """
 State Manager for persisting continuous generation job state.
 Handles saving/loading job state to/from JSON files.
+
+Supports multiple connection types (Asana, Okta, and future platforms).
+Each connection type can have its own data structure and statistics.
+Maintains backward compatibility with legacy Asana-only job files.
 """
 
 import json
@@ -13,7 +17,17 @@ import uuid
 
 
 class StateManager:
-    """Manages persistent state for continuous generation jobs."""
+    """
+    Manages persistent state for continuous generation jobs.
+
+    Supports multiple connection types:
+    - Asana: Projects, tasks, comments, custom fields
+    - Okta: Users, groups, applications, assignments
+    - Future: Other platforms can be added
+
+    Each connection type maintains its own data structures and statistics
+    while sharing common lifecycle management (status, timestamps, logs).
+    """
 
     def __init__(self, state_dir: str = "."):
         """
@@ -29,17 +43,23 @@ class StateManager:
         """
         Create a new job with initial state.
 
+        Extracts connection_type from config and initializes appropriate data structures.
+        Supports: 'asana' (projects/tasks) and 'okta' (users/groups).
+
         Args:
-            config: Job configuration dictionary
+            config: Job configuration dictionary (must include 'connection_type')
 
         Returns:
             Job ID
         """
         job_id = str(uuid.uuid4())[:8]  # Short UUID
         now = datetime.now(timezone.utc).isoformat()
+        connection_type = config.get("connection_type", "asana")  # Default to asana for backward compatibility
 
+        # Common state structure (connection-agnostic)
         state = {
             "job_id": job_id,
+            "connection_type": connection_type,  # NEW: Connection type identifier
             "job_name": config.get("job_name"),
             "status": "running",
             "created_at": now,
@@ -47,43 +67,101 @@ class StateManager:
             "last_activity": now,
             "last_saved": now,
             "config": config,
-            "projects": [],
             "activity_log": [],
-            "used_scenarios": [],  # Track which scenarios have been used to ensure variety
-            "created_object_ids": {  # Track all created workspace-level objects for cleanup
-                "portfolios": [],  # List of portfolio GIDs
-                "custom_fields": [],  # List of custom field GIDs
-                "tags": [],  # List of tag GIDs
-                "sections": []  # List of section GIDs
-            },
-            "stats": {
-                "projects_created": 0,
-                "tasks_created": 0,
-                "subtasks_created": 0,
-                "comments_added": 0,
-                "task_state_changes": 0,
-                "tasks_completed": 0,
-                "custom_fields_created": 0,
-                "sections_created": 0,
-                "tags_created": 0,
-                "portfolios_created": 0,
-                "errors": 0
-            },
-            "api_usage": {
-                "asana_calls_today": 0,
-                "llm_calls_today": 0,
-                "llm_tokens_today": 0,
-                "last_reset": now
-            },
             "errors": []
         }
+
+        # Connection-specific initialization
+        if connection_type == "asana":
+            state.update({
+                "projects": [],
+                "used_scenarios": [],  # Track which scenarios have been used to ensure variety
+                "created_object_ids": {  # Track all created workspace-level objects for cleanup
+                    "portfolios": [],  # List of portfolio GIDs
+                    "custom_fields": [],  # List of custom field GIDs
+                    "tags": [],  # List of tag GIDs
+                    "sections": []  # List of section GIDs
+                },
+                "stats": {
+                    "projects_created": 0,
+                    "tasks_created": 0,
+                    "subtasks_created": 0,
+                    "comments_added": 0,
+                    "task_state_changes": 0,
+                    "tasks_completed": 0,
+                    "custom_fields_created": 0,
+                    "sections_created": 0,
+                    "tags_created": 0,
+                    "portfolios_created": 0,
+                    "errors": 0
+                },
+                "api_usage": {
+                    "asana_calls_today": 0,
+                    "llm_calls_today": 0,
+                    "llm_tokens_today": 0,
+                    "last_reset": now
+                }
+            })
+        elif connection_type == "okta":
+            state.update({
+                "users": [],
+                "groups": [],
+                "app_assignments": [],
+                "stats": {
+                    "users_created": 0,
+                    "groups_created": 0,
+                    "app_assignments_created": 0,
+                    "user_group_assignments": 0,
+                    "user_activations": 0,
+                    "user_deactivations": 0,
+                    "errors": 0
+                },
+                "api_usage": {
+                    "okta_calls_today": 0,
+                    "llm_calls_today": 0,
+                    "llm_tokens_today": 0,
+                    "last_reset": now
+                }
+            })
+        else:
+            # Generic fallback for unknown connection types
+            state.update({
+                "stats": {
+                    "errors": 0
+                },
+                "api_usage": {
+                    "api_calls_today": 0,
+                    "llm_calls_today": 0,
+                    "llm_tokens_today": 0,
+                    "last_reset": now
+                }
+            })
 
         self.save_state(job_id, state)
         return job_id
 
+    def _migrate_legacy_job(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Migrate legacy job state to current format.
+
+        Adds connection_type field for jobs created before multi-connection support.
+        Legacy jobs are assumed to be Asana jobs.
+
+        Args:
+            state: Job state dictionary
+
+        Returns:
+            Migrated state dictionary
+        """
+        if "connection_type" not in state:
+            state["connection_type"] = "asana"  # Legacy jobs are Asana
+        return state
+
     def load_state(self, job_id: str) -> Optional[Dict[str, Any]]:
         """
         Load state for a job.
+
+        Automatically migrates legacy job files that don't have connection_type.
 
         Args:
             job_id: Job ID to load
@@ -98,7 +176,10 @@ class StateManager:
 
         try:
             with open(state_file, 'r') as f:
-                return json.load(f)
+                state = json.load(f)
+            # Migrate legacy jobs to current format
+            state = self._migrate_legacy_job(state)
+            return state
         except Exception as e:
             print(f"Error loading state for job {job_id}: {e}")
             return None
@@ -359,12 +440,15 @@ class StateManager:
             state["next_activity_time"] = next_time
             self.save_state(job_id, state)
 
-    def get_all_jobs(self) -> List[Dict[str, Any]]:
+    def get_all_jobs(self, connection_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get list of all jobs with basic info.
 
         IMPORTANT: Filters out jobs marked for deletion (_deleting=True).
         These are tombstone files that prevent race conditions during deletion.
+
+        Args:
+            connection_type: Optional filter by connection type ('asana', 'okta', etc.)
 
         Returns:
             List of job summaries (excluding jobs marked for deletion)
@@ -380,9 +464,17 @@ class StateManager:
                     if state.get("_deleting"):
                         continue
 
+                    # Migrate legacy jobs
+                    state = self._migrate_legacy_job(state)
+
+                    # Filter by connection type if specified
+                    if connection_type and state.get("connection_type") != connection_type:
+                        continue
+
                     jobs.append({
                         "job_id": state["job_id"],
                         "job_name": state.get("job_name"),
+                        "connection_type": state.get("connection_type", "asana"),  # NEW
                         "status": state["status"],
                         "started_at": state["started_at"],
                         "last_activity": state["last_activity"],
@@ -438,10 +530,80 @@ class StateManager:
                         tasks.append(task)
         return tasks
 
+    def get_jobs_by_connection_type(self, connection_type: str) -> List[Dict[str, Any]]:
+        """
+        Get all jobs for a specific connection type.
+
+        Convenience method that wraps get_all_jobs with filtering.
+
+        Args:
+            connection_type: Connection type to filter by ('asana', 'okta', etc.)
+
+        Returns:
+            List of job summaries for the specified connection type
+        """
+        return self.get_all_jobs(connection_type=connection_type)
+
+    def get_connection_type(self, job_id: str) -> Optional[str]:
+        """
+        Get the connection type for a job.
+
+        Args:
+            job_id: Job ID
+
+        Returns:
+            Connection type string ('asana', 'okta', etc.) or None if job not found
+        """
+        state = self.load_state(job_id)
+        if state:
+            return state.get("connection_type", "asana")  # Default to asana for legacy jobs
+        return None
+
+    def validate_state_structure(self, state: Dict[str, Any]) -> bool:
+        """
+        Validate state has required fields for its connection type.
+
+        Checks for:
+        - Common fields: job_id, connection_type, status, config
+        - Connection-specific fields based on connection_type
+
+        Args:
+            state: State dictionary to validate
+
+        Returns:
+            True if valid, False otherwise
+        """
+        # Check common required fields
+        required_common = ["job_id", "status", "config"]
+        for field in required_common:
+            if field not in state:
+                return False
+
+        # Connection type should exist (or be migratable)
+        connection_type = state.get("connection_type")
+        if not connection_type:
+            # Check if this is a legacy Asana job (has 'projects' field)
+            if "projects" in state:
+                return True  # Valid legacy job
+            return False
+
+        # Validate connection-specific fields
+        if connection_type == "asana":
+            required_asana = ["projects", "stats"]
+            return all(field in state for field in required_asana)
+        elif connection_type == "okta":
+            required_okta = ["users", "groups", "stats"]
+            return all(field in state for field in required_okta)
+
+        # Unknown connection types are valid if they have stats
+        return "stats" in state
+
     def mark_for_deletion(self, job_id: str) -> bool:
         """
         Mark a job for deletion with an atomic flag.
         This prevents background threads from saving state after deletion starts.
+
+        Works for all connection types.
 
         Args:
             job_id: Job ID to mark
@@ -481,26 +643,28 @@ class StateManager:
 
 # Example usage
 if __name__ == "__main__":
-    # Test the state manager
+    # Test the state manager with multiple connection types
     manager = StateManager("./test_states")
 
-    # Create a new job
-    config = {
+    # ========== Example 1: Asana Job ==========
+    print("=== Creating Asana Job ===")
+    asana_config = {
+        "connection_type": "asana",
         "industry": "healthcare",
         "duration_days": 30,
         "workspace_gid": "123456",
         "workspace_name": "Test Workspace"
     }
 
-    job_id = manager.create_new_job(config)
-    print(f"Created job: {job_id}")
+    asana_job_id = manager.create_new_job(asana_config)
+    print(f"Created Asana job: {asana_job_id}")
 
     # Add a project
     project = {
         "gid": "proj_001",
         "name": "Electronic Health Records Migration"
     }
-    manager.add_project(job_id, project)
+    manager.add_project(asana_job_id, project)
 
     # Add a task
     task = {
@@ -508,30 +672,92 @@ if __name__ == "__main__":
         "name": "Update HIPAA documentation",
         "assignee": {"gid": "user_001", "name": "Alice"}
     }
-    manager.add_task(job_id, "proj_001", task)
+    manager.add_task(asana_job_id, "proj_001", task)
 
     # Update task status
-    manager.update_task_status(job_id, "task_001", "in_progress")
+    manager.update_task_status(asana_job_id, "task_001", "in_progress")
 
     # Add a comment
     comment = {"text": "Starting work on this"}
-    manager.add_comment(job_id, "task_001", comment)
+    manager.add_comment(asana_job_id, "task_001", comment)
 
     # Log activity
-    manager.log_activity(job_id, "comment_added", {
+    manager.log_activity(asana_job_id, "comment_added", {
         "task_id": "task_001",
         "user": "Alice"
     })
 
-    # Get all jobs
-    jobs = manager.get_all_jobs()
-    print(f"\nAll jobs: {len(jobs)}")
-    for job in jobs:
-        print(f"  {job['job_id']}: {job['status']} - {job['industry']}")
+    # ========== Example 2: Okta Job ==========
+    print("\n=== Creating Okta Job ===")
+    okta_config = {
+        "connection_type": "okta",
+        "job_name": "Okta User Management",
+        "domain": "dev-123456.okta.com"
+    }
 
-    # Load and display state
-    state = manager.load_state(job_id)
-    print(f"\nState stats:")
-    print(f"  Projects: {state['stats']['projects_created']}")
-    print(f"  Tasks: {state['stats']['tasks_created']}")
-    print(f"  Comments: {state['stats']['comments_added']}")
+    okta_job_id = manager.create_new_job(okta_config)
+    print(f"Created Okta job: {okta_job_id}")
+
+    # Log some Okta activities
+    manager.log_activity(okta_job_id, "create_user", {
+        "user_id": "user_001",
+        "email": "john.doe@example.com"
+    })
+
+    manager.log_activity(okta_job_id, "create_group", {
+        "group_id": "group_001",
+        "name": "Engineering Team"
+    })
+
+    # ========== Example 3: Query Jobs ==========
+    print("\n=== All Jobs ===")
+    all_jobs = manager.get_all_jobs()
+    print(f"Total jobs: {len(all_jobs)}")
+    for job in all_jobs:
+        print(f"  {job['job_id']}: {job['connection_type']} - {job['status']}")
+
+    print("\n=== Asana Jobs Only ===")
+    asana_jobs = manager.get_jobs_by_connection_type("asana")
+    print(f"Asana jobs: {len(asana_jobs)}")
+    for job in asana_jobs:
+        print(f"  {job['job_id']}: {job.get('industry', 'N/A')}")
+
+    print("\n=== Okta Jobs Only ===")
+    okta_jobs = manager.get_jobs_by_connection_type("okta")
+    print(f"Okta jobs: {len(okta_jobs)}")
+    for job in okta_jobs:
+        print(f"  {job['job_id']}: {job.get('job_name', 'N/A')}")
+
+    # ========== Example 4: Helper Methods ==========
+    print("\n=== Helper Methods ===")
+    print(f"Asana job connection type: {manager.get_connection_type(asana_job_id)}")
+    print(f"Okta job connection type: {manager.get_connection_type(okta_job_id)}")
+
+    # Validate states
+    asana_state = manager.load_state(asana_job_id)
+    okta_state = manager.load_state(okta_job_id)
+    print(f"Asana state valid: {manager.validate_state_structure(asana_state)}")
+    print(f"Okta state valid: {manager.validate_state_structure(okta_state)}")
+
+    # ========== Example 5: Display Stats ==========
+    print("\n=== Asana Job Stats ===")
+    print(f"  Projects: {asana_state['stats']['projects_created']}")
+    print(f"  Tasks: {asana_state['stats']['tasks_created']}")
+    print(f"  Comments: {asana_state['stats']['comments_added']}")
+
+    print("\n=== Okta Job Stats ===")
+    print(f"  Users: {okta_state['stats']['users_created']}")
+    print(f"  Groups: {okta_state['stats']['groups_created']}")
+
+    # ========== Example 6: Legacy Migration ==========
+    print("\n=== Testing Legacy Migration ===")
+    # Simulate loading a legacy job (without connection_type)
+    legacy_state = {
+        "job_id": "legacy123",
+        "status": "running",
+        "config": {"industry": "finance"},
+        "projects": [],
+        "stats": {"projects_created": 5}
+    }
+    migrated = manager._migrate_legacy_job(legacy_state)
+    print(f"Legacy job migrated: connection_type = {migrated.get('connection_type')}")
