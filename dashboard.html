@@ -798,6 +798,11 @@
             color: white;
         }
 
+        .connection-badge.salesforce {
+            background-color: #00A1E0;
+            color: white;
+        }
+
         /* Connection-specific job cards */
         .job-card.asana {
             border-left: 4px solid #f06a6a;
@@ -805,6 +810,10 @@
 
         .job-card.okta {
             border-left: 4px solid #007dc1;
+        }
+
+        .job-card.salesforce {
+            border-left: 4px solid #00A1E0;
         }
 
         /* Connection-specific form fields */
@@ -1223,13 +1232,14 @@
                     stats.stoppedJobs++;
                 }
 
-                // Count all activity types from stats
+                // Count all activity types from stats (platform-agnostic)
                 if (job.stats) {
-                    stats.totalActivities += (job.stats.projects_created || 0);
-                    stats.totalActivities += (job.stats.tasks_created || 0);
-                    stats.totalActivities += (job.stats.subtasks_created || 0);
-                    stats.totalActivities += (job.stats.comments_added || 0);
-                    stats.totalActivities += (job.stats.task_state_changes || 0);
+                    // Count all numeric stats except errors
+                    Object.keys(job.stats).forEach(key => {
+                        if (key !== 'errors' && typeof job.stats[key] === 'number') {
+                            stats.totalActivities += job.stats[key];
+                        }
+                    });
 
                     stats.totalErrors += (job.stats.errors || 0);
                 }
@@ -1275,20 +1285,22 @@
         function renderActivityBreakdownChart(jobs) {
             const ctx = document.getElementById('tasksChart').getContext('2d');
 
-            // Aggregate activity types across all jobs
-            let activityCounts = {
-                'Created': 0,
-                'Modified': 0,
-                'Completed': 0,
-                'Errors': 0
-            };
+            // Aggregate activity types across all jobs (platform-agnostic)
+            let activityCounts = {};
 
             jobs.forEach(job => {
                 if (job.stats) {
-                    activityCounts['Created'] += (job.stats.projects_created || 0) + (job.stats.tasks_created || 0) + (job.stats.subtasks_created || 0);
-                    activityCounts['Modified'] += (job.stats.comments_added || 0) + (job.stats.task_state_changes || 0);
-                    activityCounts['Completed'] += (job.stats.tasks_completed || 0);
-                    activityCounts['Errors'] += (job.stats.errors || 0);
+                    Object.keys(job.stats).forEach(key => {
+                        if (key !== 'errors' && typeof job.stats[key] === 'number') {
+                            // Convert snake_case to Title Case for labels
+                            const label = key.split('_').map(word =>
+                                word.charAt(0).toUpperCase() + word.slice(1)
+                            ).join(' ');
+
+                            activityCounts[label] = (activityCounts[label] || 0) + job.stats[key];
+                        }
+                    });
+                    activityCounts['Errors'] = (activityCounts['Errors'] || 0) + (job.stats.errors || 0);
                 }
             });
 
@@ -1596,6 +1608,10 @@
                                     <span class="connection-badge okta" style="margin-right: 4px;">Okta</span>
                                     (${jobsData.filter(j => (j.connection_type || j.vendor || 'asana') === 'okta').length})
                                 </button>
+                                <button class="btn ${filterType === 'salesforce' ? 'btn-primary' : 'btn-secondary'}" onclick="renderJobs('salesforce')">
+                                    <span class="connection-badge salesforce" style="margin-right: 4px;">Salesforce</span>
+                                    (${jobsData.filter(j => (j.connection_type || j.vendor || 'asana') === 'salesforce').length})
+                                </button>
                             </div>
                             <div class="jobs-grid">
                         `;
@@ -1655,6 +1671,41 @@
                     <div class="job-stat">
                         <div class="job-stat-value">${job.stats.users_activated || 0}</div>
                         <div class="job-stat-label">Activated Users</div>
+                    </div>
+                `;
+            } else if (connectionType === 'salesforce') {
+                return `
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.accounts_count || 0}</div>
+                        <div class="job-stat-label">Accounts</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.contacts_count || 0}</div>
+                        <div class="job-stat-label">Contacts</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.opportunities_count || 0}</div>
+                        <div class="job-stat-label">Opportunities</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.leads_count || 0}</div>
+                        <div class="job-stat-label">Leads</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.cases_count || 0}</div>
+                        <div class="job-stat-label">Cases</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.campaigns_count || 0}</div>
+                        <div class="job-stat-label">Campaigns</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.opportunities_won || 0}</div>
+                        <div class="job-stat-label">Opps Won</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">${job.stats.opportunities_lost || 0}</div>
+                        <div class="job-stat-label">Opps Lost</div>
                     </div>
                 `;
             } else {
@@ -1755,7 +1806,7 @@
                                 ''
                             }
                             <button class="btn btn-sm btn-info" onclick="viewActivityLog('${job.job_id}')">📋 View Log</button>
-                            <button class="btn btn-sm btn-gray" onclick="deleteJob('${job.job_id}')">🗑 Delete</button>
+                            <button class="btn btn-sm btn-gray" onclick="deleteJob('${job.job_id}', '${job.connection_type || 'asana'}')">🗑 Delete</button>
                         </div>
                     </div>
                 </div>
@@ -1836,7 +1887,19 @@
                     name: 'Asana',
                     color: '#F06A6A',
                     logo: 'https://cdn.worldvectorlogo.com/logos/asana-logo.svg',
-                    fallbackIcon: '🎯'
+                    fallbackIcon: '🔺'
+                },
+                'okta': {
+                    name: 'Okta',
+                    color: '#007DC1',
+                    logo: 'https://cdn.worldvectorlogo.com/logos/okta-1.svg',
+                    fallbackIcon: '🔷'
+                },
+                'salesforce': {
+                    name: 'Salesforce',
+                    color: '#00A1E0',
+                    logo: 'https://cdn.worldvectorlogo.com/logos/salesforce-2.svg',
+                    fallbackIcon: '☁️'
                 },
                 'jira': {
                     name: 'Jira',
@@ -1910,7 +1973,7 @@
                                         <tr style="border-bottom: 2px solid var(--gray-200);">
                                             <th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Platform</th>
                                             <th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Connection Name</th>
-                                            <th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Workspace</th>
+                                            <th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Tenant / Instance</th>
                                             <th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Users</th>
                                             <th style="padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Created</th>
                                             <th style="padding: 16px; text-align: right; font-size: 13px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;">Actions</th>
@@ -1947,7 +2010,7 @@
                                                     </td>
                                                     <td style="padding: 16px;">
                                                         <div style="font-family: monospace; font-size: 13px; color: var(--gray-600); background: var(--gray-50); padding: 4px 8px; border-radius: 4px; display: inline-block;">
-                                                            ${conn.workspaceGid}
+                                                            ${conn.vendor === 'okta' ? conn.orgUrl : conn.vendor === 'salesforce' ? conn.instanceUrl : conn.workspaceGid}
                                                         </div>
                                                     </td>
                                                     <td style="padding: 16px;">
@@ -1974,7 +2037,7 @@
                                                             <button class="btn btn-sm btn-secondary" onclick="editConnection('${conn.id}')" title="Edit connection">
                                                                 ✏️
                                                             </button>
-                                                            <button class="btn btn-sm" style="background: #F59E0B; color: white;" onclick="cleanWorkspace('${conn.id}', '${conn.workspaceGid}')" title="Clean all data from workspace">
+                                                            <button class="btn btn-sm" style="background: #F59E0B; color: white;" onclick="cleanTenant('${conn.id}')" title="Clean all data from ${conn.vendor === 'asana' ? 'workspace' : conn.vendor === 'okta' ? 'organization' : 'instance'}">
                                                                 🧹
                                                             </button>
                                                             <button class="btn btn-sm btn-error" onclick="deleteConnection('${conn.id}')" title="Delete connection">
@@ -2029,6 +2092,26 @@
                                     <span style="display: none; font-size: 40px;">🎯</span>
                                 </div>
                                 <div style="font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">Asana</div>
+                                <div style="font-size: 12px; color: var(--success); font-weight: 600;">Available</div>
+                            </div>
+
+                            <!-- Okta Card -->
+                            <div class="platform-card" onclick="showPlatformConnectionForm('okta')" style="cursor: pointer; padding: 24px; border: 2px solid var(--gray-200); border-radius: 12px; text-align: center; transition: all 0.2s; background: white;">
+                                <div style="width: 64px; height: 64px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: #007DC115; border-radius: 12px; padding: 12px;">
+                                    <img src="https://cdn.worldvectorlogo.com/logos/okta-2.svg" alt="Okta" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <span style="display: none; font-size: 40px;">🔐</span>
+                                </div>
+                                <div style="font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">Okta</div>
+                                <div style="font-size: 12px; color: var(--success); font-weight: 600;">Available</div>
+                            </div>
+
+                            <!-- Salesforce Card -->
+                            <div class="platform-card" onclick="showPlatformConnectionForm('salesforce')" style="cursor: pointer; padding: 24px; border: 2px solid var(--gray-200); border-radius: 12px; text-align: center; transition: all 0.2s; background: white;">
+                                <div style="width: 64px; height: 64px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: #00A1E015; border-radius: 12px; padding: 12px;">
+                                    <img src="https://cdn.worldvectorlogo.com/logos/salesforce-2.svg" alt="Salesforce" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <span style="display: none; font-size: 40px;">☁️</span>
+                                </div>
+                                <div style="font-weight: 600; color: var(--gray-900); margin-bottom: 4px;">Salesforce</div>
                                 <div style="font-size: 12px; color: var(--success); font-weight: 600;">Available</div>
                             </div>
 
@@ -2103,6 +2186,10 @@
             // Show platform-specific form
             if (platform === 'asana') {
                 showAsanaConnectionForm();
+            } else if (platform === 'okta') {
+                showOktaConnectionForm();
+            } else if (platform === 'salesforce') {
+                showSalesforceConnectionForm();
             }
             // Add more platforms here in the future
         }
@@ -2164,6 +2251,137 @@
             document.body.appendChild(modal);
         }
 
+        function showOktaConnectionForm() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 class="modal-title">
+                            <span style="font-size: 24px; margin-right: 8px;">🔐</span>
+                            Connect Okta Organization
+                        </h2>
+                        <button class="modal-close" onclick="this.closest('.modal-backdrop').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="connectionForm" onsubmit="saveConnection(event, 'okta')">
+                            <div class="form-group">
+                                <label>Connection Name
+                                    <div class="label-description">A friendly name to identify this Okta organization</div>
+                                </label>
+                                <input type="text" id="connName" placeholder="e.g. Production Okta Org" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Okta Organization URL
+                                    <div class="label-description">Your Okta domain (e.g. https://dev-12345.okta.com)</div>
+                                </label>
+                                <input type="url" id="connOrgUrl" placeholder="https://dev-12345.okta.com" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Admin API Tokens
+                                    <div class="label-description">Add 1+ admin API tokens for multi-user simulation. Get tokens at Security → API → Tokens</div>
+                                </label>
+                                <div class="user-tokens-container" id="connUserTokensContainer">
+                                    <div class="user-token-item">
+                                        <input type="text" placeholder="Admin name (e.g. Admin1)" class="conn-user-name" required>
+                                        <input type="password" placeholder="Okta API Token (SSWS)" class="conn-user-token" required>
+                                        <button type="button" class="remove-user-btn" onclick="removeConnUserToken(this)">×</button>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-secondary" style="margin-top: 12px;" onclick="addConnUserToken()">+ Add Another Admin</button>
+                            </div>
+
+                            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="this.closest('.modal-backdrop').remove(); showAddConnectionModal();">
+                                    ← Back
+                                </button>
+                                <button type="submit" class="btn btn-primary" style="flex: 2;">
+                                    💾 Save Connection
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function showSalesforceConnectionForm() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.innerHTML = `
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 class="modal-title">
+                            <span style="font-size: 24px; margin-right: 8px;">☁️</span>
+                            Connect Salesforce Org
+                        </h2>
+                        <button class="modal-close" onclick="this.closest('.modal-backdrop').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="connectionForm" onsubmit="saveConnection(event, 'salesforce')">
+                            <div class="form-group">
+                                <label>Connection Name
+                                    <div class="label-description">A friendly name to identify this Salesforce org</div>
+                                </label>
+                                <input type="text" id="connName" placeholder="e.g. Production Salesforce" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Instance URL
+                                    <div class="label-description">Your Salesforce instance URL (e.g. https://mycompany.my.salesforce.com)</div>
+                                </label>
+                                <input type="url" id="connInstanceUrl" placeholder="https://mycompany.my.salesforce.com" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>User Credentials
+                                    <div class="label-description">Add 1+ user credentials for multi-user simulation. Each user needs username, password, and security token</div>
+                                </label>
+                                <div class="user-tokens-container" id="connUserTokensContainer">
+                                    <div class="user-token-item" style="display: grid; gap: 8px;">
+                                        <input type="text" placeholder="Display name (e.g. Admin User)" class="conn-user-name" required>
+                                        <input type="email" placeholder="Salesforce username (email)" class="conn-user-email" required>
+                                        <input type="password" placeholder="Password" class="conn-user-password" required>
+                                        <input type="password" placeholder="Security Token" class="conn-user-token" required>
+                                        <button type="button" class="remove-user-btn" onclick="removeConnUserToken(this)" style="grid-column: 1 / -1;">Remove User</button>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-secondary" style="margin-top: 12px;" onclick="addSalesforceUser()">+ Add Another User</button>
+                            </div>
+
+                            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="this.closest('.modal-backdrop').remove(); showAddConnectionModal();">
+                                    ← Back
+                                </button>
+                                <button type="submit" class="btn btn-primary" style="flex: 2;">
+                                    💾 Save Connection
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function addSalesforceUser() {
+            const container = document.getElementById('connUserTokensContainer');
+            const newItem = document.createElement('div');
+            newItem.className = 'user-token-item';
+            newItem.style.cssText = 'display: grid; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200);';
+            newItem.innerHTML = `
+                <input type="text" placeholder="Display name (e.g. Sales User)" class="conn-user-name" required>
+                <input type="email" placeholder="Salesforce username (email)" class="conn-user-email" required>
+                <input type="password" placeholder="Password" class="conn-user-password" required>
+                <input type="password" placeholder="Security Token" class="conn-user-token" required>
+                <button type="button" class="remove-user-btn" onclick="removeConnUserToken(this)" style="grid-column: 1 / -1;">Remove User</button>
+            `;
+            container.appendChild(newItem);
+        }
+
         function addConnUserToken() {
             const container = document.getElementById('connUserTokensContainer');
             const newItem = document.createElement('div');
@@ -2189,15 +2407,61 @@
             e.preventDefault();
 
             const name = document.getElementById('connName').value.trim();
-            const workspaceGid = document.getElementById('connWorkspaceGid').value.trim();
 
-            // Gather users
+            // Build connection object based on vendor
+            const newConnection = {
+                id: Date.now().toString(),
+                name,
+                vendor: vendor || 'asana', // Default to asana
+                createdAt: new Date().toISOString()
+            };
+
+            // Add vendor-specific fields
+            if (vendor === 'okta') {
+                const orgUrl = document.getElementById('connOrgUrl').value.trim();
+                newConnection.orgUrl = orgUrl;
+            } else if (vendor === 'salesforce') {
+                const instanceUrl = document.getElementById('connInstanceUrl').value.trim();
+                newConnection.instanceUrl = instanceUrl;
+            } else {
+                // Asana or other platforms
+                const workspaceGid = document.getElementById('connWorkspaceGid').value.trim();
+                newConnection.workspaceGid = workspaceGid;
+            }
+
+            // Gather users with platform-specific structure
             const users = [];
             document.querySelectorAll('#connUserTokensContainer .user-token-item').forEach(item => {
                 const userName = item.querySelector('.conn-user-name').value.trim();
-                const userToken = item.querySelector('.conn-user-token').value.trim();
-                if (userName && userToken) {
-                    users.push({ name: userName, token: userToken });
+
+                if (vendor === 'salesforce') {
+                    // Salesforce requires username, password, and security token
+                    const userEmail = item.querySelector('.conn-user-email')?.value.trim();
+                    const userPassword = item.querySelector('.conn-user-password')?.value.trim();
+                    const securityToken = item.querySelector('.conn-user-token')?.value.trim();
+                    if (userName && userEmail && userPassword && securityToken) {
+                        users.push({
+                            name: userName,
+                            username: userEmail,
+                            password: userPassword,
+                            security_token: securityToken,
+                            instance_url: newConnection.instanceUrl
+                        });
+                    }
+                } else {
+                    const userToken = item.querySelector('.conn-user-token').value.trim();
+                    if (userName && userToken) {
+                        if (vendor === 'okta') {
+                            // Okta requires org_url in each token entry
+                            users.push({
+                                name: userName,
+                                token: userToken,
+                                org_url: newConnection.orgUrl
+                            });
+                        } else {
+                            users.push({ name: userName, token: userToken });
+                        }
+                    }
                 }
             });
 
@@ -2206,17 +2470,10 @@
                 return;
             }
 
+            newConnection.users = users;
+
             // Load connections and add new one
             const connections = loadConnections();
-            const newConnection = {
-                id: Date.now().toString(),
-                name,
-                vendor: vendor || 'asana', // Default to asana
-                workspaceGid,
-                users,
-                createdAt: new Date().toISOString()
-            };
-
             connections.push(newConnection);
             saveConnections(connections);
 
@@ -2234,6 +2491,63 @@
                 return;
             }
 
+            // Build platform-specific fields based on vendor
+            let platformSpecificField = '';
+            let userFieldsHTML = '';
+
+            if (connection.vendor === 'okta') {
+                platformSpecificField = `
+                    <div class="form-group">
+                        <label>Okta Organization URL
+                            <div class="label-description">Your Okta domain (e.g. https://dev-12345.okta.com)</div>
+                        </label>
+                        <input type="url" id="editConnOrgUrl" value="${connection.orgUrl || ''}" required>
+                    </div>
+                `;
+                userFieldsHTML = connection.users.map(user => `
+                    <div class="user-token-item">
+                        <input type="text" placeholder="Admin name" class="edit-conn-user-name" value="${user.name}" required>
+                        <input type="password" placeholder="Okta API Token (SSWS)" class="edit-conn-user-token" value="${user.token}" required>
+                        <button type="button" class="remove-user-btn" onclick="removeEditConnUserToken(this)">×</button>
+                    </div>
+                `).join('');
+            } else if (connection.vendor === 'salesforce') {
+                platformSpecificField = `
+                    <div class="form-group">
+                        <label>Instance URL
+                            <div class="label-description">Your Salesforce instance URL (e.g. https://mycompany.my.salesforce.com)</div>
+                        </label>
+                        <input type="url" id="editConnInstanceUrl" value="${connection.instanceUrl || ''}" required>
+                    </div>
+                `;
+                userFieldsHTML = connection.users.map(user => `
+                    <div class="user-token-item" style="display: grid; gap: 8px;">
+                        <input type="text" placeholder="Display name" class="edit-conn-user-name" value="${user.name}" required>
+                        <input type="email" placeholder="Salesforce username (email)" class="edit-conn-user-email" value="${user.username || ''}" required>
+                        <input type="password" placeholder="Password" class="edit-conn-user-password" value="${user.password || ''}" required>
+                        <input type="password" placeholder="Security Token" class="edit-conn-user-token" value="${user.security_token || ''}" required>
+                        <button type="button" class="remove-user-btn" onclick="removeEditConnUserToken(this)" style="grid-column: 1 / -1;">Remove User</button>
+                    </div>
+                `).join('');
+            } else {
+                // Asana
+                platformSpecificField = `
+                    <div class="form-group">
+                        <label>Workspace GID
+                            <div class="label-description">Find in URL: app.asana.com/0/{WORKSPACE_GID}/...</div>
+                        </label>
+                        <input type="text" id="editConnWorkspaceGid" value="${connection.workspaceGid || ''}" required>
+                    </div>
+                `;
+                userFieldsHTML = connection.users.map(user => `
+                    <div class="user-token-item">
+                        <input type="text" placeholder="User name" class="edit-conn-user-name" value="${user.name}" required>
+                        <input type="password" placeholder="Asana Personal Access Token" class="edit-conn-user-token" value="${user.token}" required>
+                        <button type="button" class="remove-user-btn" onclick="removeEditConnUserToken(this)">×</button>
+                    </div>
+                `).join('');
+            }
+
             const modal = document.createElement('div');
             modal.className = 'modal-backdrop';
             modal.innerHTML = `
@@ -2246,7 +2560,7 @@
                         <form id="editConnectionForm" onsubmit="updateConnection(event, '${connectionId}')">
                             <div class="form-group">
                                 <label>Connection Name
-                                    <div class="label-description">A friendly name to identify this workspace</div>
+                                    <div class="label-description">A friendly name to identify this connection</div>
                                 </label>
                                 <input type="text" id="editConnName" value="${connection.name}" required>
                             </div>
@@ -2255,8 +2569,10 @@
                                 <label>SaaS Platform
                                     <div class="label-description">Select which platform this connection is for</div>
                                 </label>
-                                <select id="editConnVendor">
+                                <select id="editConnVendor" onchange="handleEditVendorChange('${connectionId}')">
                                     <option value="asana" ${connection.vendor === 'asana' ? 'selected' : ''}>Asana</option>
+                                    <option value="okta" ${connection.vendor === 'okta' ? 'selected' : ''}>Okta</option>
+                                    <option value="salesforce" ${connection.vendor === 'salesforce' ? 'selected' : ''}>Salesforce</option>
                                     <option value="jira" disabled>Jira (Coming Soon)</option>
                                     <option value="monday" disabled>Monday.com (Coming Soon)</option>
                                     <option value="clickup" disabled>ClickUp (Coming Soon)</option>
@@ -2264,27 +2580,16 @@
                                 </select>
                             </div>
 
-                            <div class="form-group">
-                                <label>Workspace GID
-                                    <div class="label-description">Find in URL: app.asana.com/0/{WORKSPACE_GID}/...</div>
-                                </label>
-                                <input type="text" id="editConnWorkspaceGid" value="${connection.workspaceGid}" required>
-                            </div>
+                            ${platformSpecificField}
 
                             <div class="form-group">
-                                <label>User API Tokens
-                                    <div class="label-description">Add 2-3+ user tokens for multi-user simulation</div>
+                                <label>User ${connection.vendor === 'okta' ? 'Admin API Tokens' : connection.vendor === 'salesforce' ? 'Credentials' : 'API Tokens'}
+                                    <div class="label-description">${connection.vendor === 'salesforce' ? 'Add 1+ user credentials for multi-user simulation' : 'Add 2-3+ user tokens for multi-user simulation'}</div>
                                 </label>
                                 <div class="user-tokens-container" id="editConnUserTokensContainer">
-                                    ${connection.users.map(user => `
-                                        <div class="user-token-item">
-                                            <input type="text" placeholder="User name" class="edit-conn-user-name" value="${user.name}" required>
-                                            <input type="password" placeholder="Asana Personal Access Token" class="edit-conn-user-token" value="${user.token}" required>
-                                            <button type="button" class="remove-user-btn" onclick="removeEditConnUserToken(this)">×</button>
-                                        </div>
-                                    `).join('')}
+                                    ${userFieldsHTML}
                                 </div>
-                                <button type="button" class="btn btn-secondary" style="margin-top: 12px;" onclick="addEditConnUserToken()">+ Add Another User</button>
+                                <button type="button" class="btn btn-secondary" style="margin-top: 12px;" onclick="addEditConnUserToken('${connection.vendor}')">+ Add Another ${connection.vendor === 'salesforce' ? 'User' : connection.vendor === 'okta' ? 'Admin' : 'User'}</button>
                             </div>
 
                             <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">
@@ -2297,15 +2602,34 @@
             document.body.appendChild(modal);
         }
 
-        function addEditConnUserToken() {
+        function addEditConnUserToken(vendor) {
             const container = document.getElementById('editConnUserTokensContainer');
             const newItem = document.createElement('div');
             newItem.className = 'user-token-item';
-            newItem.innerHTML = `
-                <input type="text" placeholder="User name" class="edit-conn-user-name" required>
-                <input type="password" placeholder="Asana Personal Access Token" class="edit-conn-user-token" required>
-                <button type="button" class="remove-user-btn" onclick="removeEditConnUserToken(this)">×</button>
-            `;
+
+            if (vendor === 'salesforce') {
+                newItem.style.cssText = 'display: grid; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200);';
+                newItem.innerHTML = `
+                    <input type="text" placeholder="Display name" class="edit-conn-user-name" required>
+                    <input type="email" placeholder="Salesforce username (email)" class="edit-conn-user-email" required>
+                    <input type="password" placeholder="Password" class="edit-conn-user-password" required>
+                    <input type="password" placeholder="Security Token" class="edit-conn-user-token" required>
+                    <button type="button" class="remove-user-btn" onclick="removeEditConnUserToken(this)" style="grid-column: 1 / -1;">Remove User</button>
+                `;
+            } else if (vendor === 'okta') {
+                newItem.innerHTML = `
+                    <input type="text" placeholder="Admin name" class="edit-conn-user-name" required>
+                    <input type="password" placeholder="Okta API Token (SSWS)" class="edit-conn-user-token" required>
+                    <button type="button" class="remove-user-btn" onclick="removeEditConnUserToken(this)">×</button>
+                `;
+            } else {
+                // Asana
+                newItem.innerHTML = `
+                    <input type="text" placeholder="User name" class="edit-conn-user-name" required>
+                    <input type="password" placeholder="Asana Personal Access Token" class="edit-conn-user-token" required>
+                    <button type="button" class="remove-user-btn" onclick="removeEditConnUserToken(this)">×</button>
+                `;
+            }
             container.appendChild(newItem);
         }
 
@@ -2323,22 +2647,69 @@
 
             const name = document.getElementById('editConnName').value.trim();
             const vendor = document.getElementById('editConnVendor').value;
-            const workspaceGid = document.getElementById('editConnWorkspaceGid').value.trim();
 
-            // Gather users
+            // Get platform-specific fields
+            const updatedConnection = {
+                name,
+                vendor,
+                updatedAt: new Date().toISOString()
+            };
+
+            // Add vendor-specific fields
+            if (vendor === 'okta') {
+                const orgUrl = document.getElementById('editConnOrgUrl')?.value.trim();
+                if (orgUrl) updatedConnection.orgUrl = orgUrl;
+            } else if (vendor === 'salesforce') {
+                const instanceUrl = document.getElementById('editConnInstanceUrl')?.value.trim();
+                if (instanceUrl) updatedConnection.instanceUrl = instanceUrl;
+            } else {
+                // Asana
+                const workspaceGid = document.getElementById('editConnWorkspaceGid')?.value.trim();
+                if (workspaceGid) updatedConnection.workspaceGid = workspaceGid;
+            }
+
+            // Gather users with platform-specific structure
             const users = [];
             document.querySelectorAll('#editConnUserTokensContainer .user-token-item').forEach(item => {
                 const userName = item.querySelector('.edit-conn-user-name').value.trim();
-                const userToken = item.querySelector('.edit-conn-user-token').value.trim();
-                if (userName && userToken) {
-                    users.push({ name: userName, token: userToken });
+
+                if (vendor === 'salesforce') {
+                    // Salesforce requires username, password, and security token
+                    const userEmail = item.querySelector('.edit-conn-user-email')?.value.trim();
+                    const userPassword = item.querySelector('.edit-conn-user-password')?.value.trim();
+                    const securityToken = item.querySelector('.edit-conn-user-token')?.value.trim();
+                    if (userName && userEmail && userPassword && securityToken) {
+                        users.push({
+                            name: userName,
+                            username: userEmail,
+                            password: userPassword,
+                            security_token: securityToken,
+                            instance_url: updatedConnection.instanceUrl
+                        });
+                    }
+                } else {
+                    const userToken = item.querySelector('.edit-conn-user-token')?.value.trim();
+                    if (userName && userToken) {
+                        if (vendor === 'okta') {
+                            // Okta requires org_url in each token entry
+                            users.push({
+                                name: userName,
+                                token: userToken,
+                                org_url: updatedConnection.orgUrl
+                            });
+                        } else {
+                            users.push({ name: userName, token: userToken });
+                        }
+                    }
                 }
             });
 
             if (users.length === 0) {
-                showToast('Please add at least one user with an API token', 'error');
+                showToast('Please add at least one user with credentials', 'error');
                 return;
             }
+
+            updatedConnection.users = users;
 
             // Update connection
             const connections = loadConnections();
@@ -2347,11 +2718,7 @@
             if (index !== -1) {
                 connections[index] = {
                     ...connections[index],
-                    name,
-                    vendor,
-                    workspaceGid,
-                    users,
-                    updatedAt: new Date().toISOString()
+                    ...updatedConnection
                 };
 
                 saveConnections(connections);
@@ -2361,6 +2728,29 @@
             } else {
                 showToast('Connection not found', 'error');
             }
+        }
+
+        function handleEditVendorChange(connectionId) {
+            // Close the modal and reopen with the new vendor
+            const name = document.getElementById('editConnName').value;
+            const newVendor = document.getElementById('editConnVendor').value;
+
+            // Get existing connection to preserve data
+            const connections = loadConnections();
+            const connection = connections.find(c => c.id === connectionId);
+
+            if (!connection) return;
+
+            // Update the vendor temporarily and reopen
+            connection.vendor = newVendor;
+
+            document.querySelector('.modal-backdrop').remove();
+            editConnection(connectionId);
+
+            // Restore the name that was being edited
+            setTimeout(() => {
+                document.getElementById('editConnName').value = name;
+            }, 10);
         }
 
         function deleteConnection(connectionId) {
@@ -2376,7 +2766,7 @@
             renderConnections();
         }
 
-        async function cleanWorkspace(connectionId, workspaceGid) {
+        async function cleanTenant(connectionId) {
             const connections = loadConnections();
             const connection = connections.find(c => c.id === connectionId);
 
@@ -2385,13 +2775,32 @@
                 return;
             }
 
+            const vendor = connection.vendor || 'asana';
+            const platformInfo = getPlatformInfo(vendor);
+
+            // Determine tenant type and value
+            let tenantLabel, tenantValue, warningText;
+            if (vendor === 'asana') {
+                tenantLabel = 'Workspace';
+                tenantValue = connection.workspaceGid;
+                warningText = 'all projects, tasks, subtasks, portfolios, custom fields, and tags';
+            } else if (vendor === 'okta') {
+                tenantLabel = 'Organization';
+                tenantValue = connection.orgUrl;
+                warningText = 'all users, groups, and applications';
+            } else if (vendor === 'salesforce') {
+                tenantLabel = 'Instance';
+                tenantValue = connection.instanceUrl;
+                warningText = 'all accounts, opportunities, contacts, leads, and cases';
+            }
+
             // Show confirmation modal
             const modal = document.createElement('div');
             modal.className = 'modal-backdrop';
             modal.innerHTML = `
                 <div class="modal">
                     <div class="modal-header">
-                        <h2 class="modal-title">Clean Workspace</h2>
+                        <h2 class="modal-title">Clean ${platformInfo.name} ${tenantLabel}</h2>
                         <button class="modal-close" onclick="this.closest('.modal-backdrop').remove()">×</button>
                     </div>
                     <div class="modal-body">
@@ -2401,21 +2810,21 @@
                                 <div>
                                     <div style="font-weight: 600; color: #92400E; margin-bottom: 4px;">Warning: This action cannot be undone</div>
                                     <div style="color: #92400E; font-size: 14px; line-height: 1.5;">
-                                        This will <strong>permanently delete</strong> all projects, tasks, subtasks, portfolios, custom fields, and tags created by your jobs in this workspace.
+                                        This will <strong>permanently delete</strong> ${warningText} created by your jobs in this ${tenantLabel.toLowerCase()}.
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <div style="margin-bottom: 20px;">
-                            <div style="font-weight: 600; margin-bottom: 8px; color: var(--gray-900);">Workspace: ${connection.name}</div>
+                            <div style="font-weight: 600; margin-bottom: 8px; color: var(--gray-900);">${tenantLabel}: ${connection.name}</div>
                             <div style="font-family: monospace; font-size: 13px; color: var(--gray-600); background: var(--gray-50); padding: 8px; border-radius: 4px;">
-                                ${workspaceGid}
+                                ${tenantValue}
                             </div>
                         </div>
 
                         <div id="cleanupProgress" style="display: none; margin-top: 20px;">
-                            <div style="font-weight: 600; margin-bottom: 12px; color: var(--gray-900);">Cleaning workspace...</div>
+                            <div style="font-weight: 600; margin-bottom: 12px; color: var(--gray-900);">Cleaning ${tenantLabel.toLowerCase()}...</div>
                             <div style="background: var(--gray-100); border-radius: 8px; height: 8px; overflow: hidden; margin-bottom: 12px;">
                                 <div id="cleanupProgressBar" style="background: var(--primary); height: 100%; width: 0%; transition: width 0.3s;"></div>
                             </div>
@@ -2426,7 +2835,7 @@
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" onclick="this.closest('.modal-backdrop').remove()">Cancel</button>
-                        <button id="confirmCleanupBtn" class="btn btn-error" onclick="executeCleanup('${connectionId}')">Clean Workspace</button>
+                        <button id="confirmCleanupBtn" class="btn btn-error" onclick="executeCleanup('${connectionId}')">Clean ${tenantLabel}</button>
                     </div>
                 </div>
             `;
@@ -2451,30 +2860,48 @@
             try {
                 const connections = loadConnections();
                 const connection = connections.find(c => c.id === connectionId);
-                const workspaceGid = connection.workspaceGid;
+                const vendor = connection.vendor || 'asana';
+
+                // Determine tenant identifier and endpoint
+                let tenantId, cleanupEndpoint, tenantLabel;
+                if (vendor === 'asana') {
+                    tenantId = connection.workspaceGid;
+                    cleanupEndpoint = `/workspace/${tenantId}/cleanup`;
+                    tenantLabel = 'workspace';
+                } else if (vendor === 'okta') {
+                    tenantId = connection.orgUrl;
+                    cleanupEndpoint = `/okta/cleanup`;
+                    tenantLabel = 'organization';
+                } else if (vendor === 'salesforce') {
+                    tenantId = connection.instanceUrl;
+                    cleanupEndpoint = `/salesforce/cleanup`;
+                    tenantLabel = 'instance';
+                }
 
                 // Phase 1: Discovering objects
                 statusDiv.innerHTML = `
-                    <div style="font-weight: 600; margin-bottom: 4px;">Phase 1: Discovering workspace objects...</div>
-                    <div style="color: var(--gray-500);">Querying Asana API for all objects in workspace</div>
+                    <div style="font-weight: 600; margin-bottom: 4px;">Phase 1: Discovering ${tenantLabel} objects...</div>
+                    <div style="color: var(--gray-500);">Querying ${vendor.charAt(0).toUpperCase() + vendor.slice(1)} API for all objects</div>
                 `;
                 progressBar.style.width = '10%';
 
-                // Call workspace cleanup endpoint
-                const cleanupResponse = await fetch(`${API_BASE}/workspace/${workspaceGid}/cleanup`, {
+                // Call cleanup endpoint
+                const cleanupResponse = await fetch(`${API_BASE}${cleanupEndpoint}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        user_tokens: connection.users
+                        tenant_id: tenantId,
+                        user_tokens: connection.users,
+                        vendor: vendor
                     })
                 });
 
                 // Update to deletion phase
                 statusDiv.innerHTML = `
                     <div style="font-weight: 600; margin-bottom: 4px;">Phase 2: Deleting objects...</div>
-                    <div style="color: var(--gray-500);">Processing deletion in bottom-up order (subtasks → tasks → projects → workspace objects)</div>
+                    <div style="color: var(--gray-500);">Processing deletion for all discovered objects</div>
                 `;
                 progressBar.style.width = '50%';
 
@@ -2487,6 +2914,20 @@
                 // Completion
                 progressBar.style.width = '100%';
 
+                // Build deleted objects list dynamically
+                let deletedObjectsList = '';
+                Object.keys(cleanupData).forEach(key => {
+                    if (key.startsWith('deleted_') && typeof cleanupData[key] === 'number') {
+                        const objectType = key.replace('deleted_', '').split('_').map(word =>
+                            word.charAt(0).toUpperCase() + word.slice(1)
+                        ).join(' ');
+                        const count = cleanupData[key];
+                        if (count > 0) {
+                            deletedObjectsList += `<div>• ${count} ${objectType.toLowerCase()}${count !== 1 ? 's' : ''}</div>`;
+                        }
+                    }
+                });
+
                 // Show success result with detailed breakdown
                 progressDiv.style.display = 'none';
                 resultDiv.innerHTML = `
@@ -2494,15 +2935,10 @@
                         <div style="display: flex; gap: 12px; align-items: start;">
                             <span style="font-size: 24px;">✅</span>
                             <div style="flex: 1;">
-                                <div style="font-weight: 600; color: var(--success-dark); margin-bottom: 12px;">Workspace cleaned successfully!</div>
+                                <div style="font-weight: 600; color: var(--success-dark); margin-bottom: 12px;">${tenantLabel.charAt(0).toUpperCase() + tenantLabel.slice(1)} cleaned successfully!</div>
                                 <div style="color: var(--success-dark); font-size: 14px; line-height: 1.8;">
                                     <div style="font-weight: 600; margin-bottom: 4px;">Deleted Objects:</div>
-                                    <div>• ${cleanupData.deleted_subtasks || 0} subtask${(cleanupData.deleted_subtasks || 0) !== 1 ? 's' : ''}</div>
-                                    <div>• ${cleanupData.deleted_tasks || 0} task${(cleanupData.deleted_tasks || 0) !== 1 ? 's' : ''}</div>
-                                    <div>• ${cleanupData.deleted_projects || 0} project${(cleanupData.deleted_projects || 0) !== 1 ? 's' : ''}</div>
-                                    <div>• ${cleanupData.deleted_portfolios || 0} portfolio${(cleanupData.deleted_portfolios || 0) !== 1 ? 's' : ''}</div>
-                                    <div>• ${cleanupData.deleted_custom_fields || 0} custom field${(cleanupData.deleted_custom_fields || 0) !== 1 ? 's' : ''}</div>
-                                    <div>• ${cleanupData.deleted_tags || 0} tag${(cleanupData.deleted_tags || 0) !== 1 ? 's' : ''}</div>
+                                    ${deletedObjectsList || '<div>• No objects found to delete</div>'}
                                 </div>
                                 ${cleanupData.failed_items && cleanupData.failed_items.length > 0 ? `
                                     <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--success);">
@@ -2519,7 +2955,7 @@
                 cancelBtn.textContent = 'Close';
                 cancelBtn.disabled = false;
 
-                showToast('Workspace cleaned successfully', 'success');
+                showToast(`${tenantLabel.charAt(0).toUpperCase() + tenantLabel.slice(1)} cleaned successfully`, 'success');
 
             } catch (error) {
                 progressDiv.style.display = 'none';
@@ -2707,6 +3143,47 @@
                                             <option value="startup">Startup (10-50 users)</option>
                                             <option value="midsize" selected>Mid-Size (100-500 users)</option>
                                             <option value="enterprise">Enterprise (1000+ users)</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Salesforce-specific fields -->
+                                    <div class="form-group salesforce-only" style="display: none;">
+                                        <label>Initial Accounts
+                                            <div class="label-description">Number of customer accounts to create when starting</div>
+                                        </label>
+                                        <input type="number" id="initialAccounts" value="50" min="10" max="1000">
+                                    </div>
+
+                                    <div class="form-group salesforce-only" style="display: none;">
+                                        <label>Organization Size
+                                            <div class="label-description">Size profile affects account/opportunity distribution</div>
+                                        </label>
+                                        <select id="sfOrgSize">
+                                            <option value="startup">Startup (20-150 accounts)</option>
+                                            <option value="midsize" selected>Mid-Size (300-2,000 accounts)</option>
+                                            <option value="enterprise">Enterprise (5,000+ accounts)</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group salesforce-only" style="display: none;">
+                                        <label>Sales Focus
+                                            <div class="label-description">Primary sales motion to simulate</div>
+                                        </label>
+                                        <select id="salesFocus">
+                                            <option value="new_business" selected>New Business - Focus on new opportunities</option>
+                                            <option value="expansion">Expansion - Upsell and cross-sell existing accounts</option>
+                                            <option value="balanced">Balanced - Mix of new and expansion</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group salesforce-only" style="display: none;">
+                                        <label>Case Volume
+                                            <div class="label-description">Monthly support case generation rate</div>
+                                        </label>
+                                        <select id="caseVolume">
+                                            <option value="low">Low - 5-30 cases/month</option>
+                                            <option value="medium" selected>Medium - 50-300 cases/month</option>
+                                            <option value="high">High - 500-5,000 cases/month</option>
                                         </select>
                                     </div>
 
@@ -2938,6 +3415,7 @@
                 // Hide all connection-specific fields
                 document.querySelectorAll('.asana-only').forEach(el => el.style.display = 'none');
                 document.querySelectorAll('.okta-only').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.salesforce-only').forEach(el => el.style.display = 'none');
                 return;
             }
 
@@ -2947,10 +3425,25 @@
             if (connection) {
                 const connectionType = connection.vendor || 'asana';
 
+                // Build tenant info based on platform
+                let tenantLabel = 'Tenant';
+                let tenantValue = '';
+
+                if (connectionType === 'asana') {
+                    tenantLabel = 'Workspace';
+                    tenantValue = connection.workspaceGid;
+                } else if (connectionType === 'okta') {
+                    tenantLabel = 'Organization';
+                    tenantValue = connection.orgUrl;
+                } else if (connectionType === 'salesforce') {
+                    tenantLabel = 'Instance';
+                    tenantValue = connection.instanceUrl;
+                }
+
                 infoDiv.style.display = 'block';
                 infoDiv.innerHTML = `
                     <div style="margin-bottom: 8px;"><strong>Platform:</strong> ${connection.vendor.charAt(0).toUpperCase() + connection.vendor.slice(1)}</div>
-                    <div style="margin-bottom: 8px;"><strong>Workspace:</strong> ${connection.workspaceGid}</div>
+                    <div style="margin-bottom: 8px;"><strong>${tenantLabel}:</strong> ${tenantValue}</div>
                     <div><strong>Users:</strong> ${connection.users.map(u => u.name).join(', ')}</div>
                 `;
 
@@ -2958,13 +3451,20 @@
                 if (connectionType === 'asana') {
                     document.querySelectorAll('.asana-only').forEach(el => el.style.display = 'block');
                     document.querySelectorAll('.okta-only').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('.salesforce-only').forEach(el => el.style.display = 'none');
                 } else if (connectionType === 'okta') {
                     document.querySelectorAll('.asana-only').forEach(el => el.style.display = 'none');
                     document.querySelectorAll('.okta-only').forEach(el => el.style.display = 'block');
+                    document.querySelectorAll('.salesforce-only').forEach(el => el.style.display = 'none');
+                } else if (connectionType === 'salesforce') {
+                    document.querySelectorAll('.asana-only').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('.okta-only').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('.salesforce-only').forEach(el => el.style.display = 'block');
                 } else {
                     // Default to asana if unknown
                     document.querySelectorAll('.asana-only').forEach(el => el.style.display = 'block');
                     document.querySelectorAll('.okta-only').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('.salesforce-only').forEach(el => el.style.display = 'none');
                 }
             }
         }
@@ -3106,11 +3606,33 @@
                     throw new Error('Selected connection not found');
                 }
 
-                // Prepare user tokens from connection
-                const userTokens = connection.users.map(user => ({
-                    name: user.name,
-                    token: user.token
-                }));
+                // Prepare user tokens from connection - platform-specific structure
+                let userTokens;
+                const connectionType = connection.vendor || 'asana';
+
+                if (connectionType === 'salesforce') {
+                    // Salesforce uses full credential structure
+                    userTokens = connection.users.map(user => ({
+                        name: user.name,
+                        username: user.username,
+                        password: user.password,
+                        security_token: user.security_token,
+                        instance_url: user.instance_url
+                    }));
+                } else if (connectionType === 'okta') {
+                    // Okta uses token + org_url
+                    userTokens = connection.users.map(user => ({
+                        name: user.name,
+                        token: user.token,
+                        org_url: user.org_url
+                    }));
+                } else {
+                    // Asana uses simple name + token
+                    userTokens = connection.users.map(user => ({
+                        name: user.name,
+                        token: user.token
+                    }));
+                }
 
                 const durationType = document.getElementById('durationType').value;
 
@@ -3126,14 +3648,11 @@
                 };
                 const mappedIndustry = industryMap[selectedIndustry] || selectedIndustry;
 
-                const connectionType = connection.vendor || 'asana';
-
                 // Build base configuration using connection and settings
                 const config = {
                     connection_type: connectionType,
                     vendor: connection.vendor,
                     industry: mappedIndustry,
-                    workspace_gid: connection.workspaceGid,
                     workspace_name: connection.name || `${selectedIndustry.charAt(0).toUpperCase() + selectedIndustry.slice(1)} Demo`,
                     job_name: document.getElementById('jobName').value.trim() || null,
                     duration_days: durationType === 'indefinite' ? 'indefinite' : parseInt(durationType),
@@ -3144,6 +3663,15 @@
                     user_tokens: userTokens,
                     anthropic_api_key: settings.anthropicKey
                 };
+
+                // Add platform-specific tenant identifier
+                if (connectionType === 'asana') {
+                    config.workspace_gid = connection.workspaceGid;
+                } else if (connectionType === 'okta') {
+                    config.org_url = connection.orgUrl;
+                } else if (connectionType === 'salesforce') {
+                    config.instance_url = connection.instanceUrl;
+                }
 
                 // Add connection-specific fields
                 if (connectionType === 'asana') {
@@ -3156,6 +3684,11 @@
                 } else if (connectionType === 'okta') {
                     config.initial_users = parseInt(getAdvancedValue('initialUsers', 50));
                     config.org_size = getAdvancedValue('orgSize', 'midsize');
+                } else if (connectionType === 'salesforce') {
+                    config.initial_accounts = parseInt(getAdvancedValue('initialAccounts', 50));
+                    config.org_size = getAdvancedValue('sfOrgSize', 'midsize');
+                    config.sales_focus = getAdvancedValue('salesFocus', 'new_business');
+                    config.case_volume = getAdvancedValue('caseVolume', 'medium');
                 }
 
                 // Start job
@@ -3201,30 +3734,44 @@
             await jobAction(jobId, 'stop');
         }
 
-        async function deleteJob(jobId) {
-            console.log('deleteJob called for job:', jobId);
+        async function deleteJob(jobId, connectionType = 'asana') {
+            console.log('deleteJob called for job:', jobId, 'connectionType:', connectionType);
 
-            // First confirmation - Do they want to cleanup Asana data?
-            const cleanupAsana = confirm(
-                'Do you want to delete ALL Asana data created by this job?\n\n' +
-                '• YES: Will delete all projects, tasks, and comments in Asana\n' +
-                '• NO: Will only delete the job record (Asana data remains)\n\n' +
-                'Click OK to DELETE Asana data, or Cancel to keep it.'
+            // Platform-specific messaging
+            const platformName = connectionType.charAt(0).toUpperCase() + connectionType.slice(1);
+            let dataDescription = '';
+
+            if (connectionType === 'asana') {
+                dataDescription = 'all projects, tasks, and comments in Asana';
+            } else if (connectionType === 'okta') {
+                dataDescription = 'all users, groups, and app assignments in Okta';
+            } else if (connectionType === 'salesforce') {
+                dataDescription = 'all accounts, contacts, opportunities, leads, cases, and campaigns in Salesforce';
+            } else {
+                dataDescription = `all ${platformName} data`;
+            }
+
+            // First confirmation - Do they want to cleanup platform data?
+            const cleanupPlatform = confirm(
+                `Do you want to delete ALL ${platformName} data created by this job?\n\n` +
+                `• YES: Will delete ${dataDescription}\n` +
+                `• NO: Will only delete the job record (${platformName} data remains)\n\n` +
+                `Click OK to DELETE ${platformName} data, or Cancel to keep it.`
             );
 
-            console.log('cleanupAsana:', cleanupAsana);
+            console.log('cleanupPlatform:', cleanupPlatform);
 
             // Second confirmation - Final warning
-            if (!confirm(`⚠️ FINAL CONFIRMATION ⚠️\n\n${cleanupAsana ? 'This will PERMANENTLY DELETE all Asana data created by this job AND the job record.' : 'This will delete the job record only. Asana data will remain.'}\n\nThis action cannot be undone. Continue?`)) {
+            if (!confirm(`⚠️ FINAL CONFIRMATION ⚠️\n\n${cleanupPlatform ? `This will PERMANENTLY DELETE all ${platformName} data created by this job AND the job record.` : `This will delete the job record only. ${platformName} data will remain.`}\n\nThis action cannot be undone. Continue?`)) {
                 console.log('User cancelled final confirmation');
                 return;
             }
 
             try {
-                // If user wants to cleanup Asana data, do that first
-                if (cleanupAsana) {
+                // If user wants to cleanup platform data, do that first
+                if (cleanupPlatform) {
                     console.log('Starting cleanup...');
-                    showToast('Cleaning up Asana data... This may take a moment.', 'info');
+                    showToast(`Cleaning up ${platformName} data... This may take a moment.`, 'info');
 
                     const cleanupResponse = await fetch(`${API_BASE}/jobs/${jobId}/cleanup`, {
                         method: 'POST'
@@ -3243,13 +3790,16 @@
                     }
 
                     if (!cleanupData.success) {
-                        // Construct error message from failed_projects or use general error
+                        // Construct error message from platform-specific failed items
                         let errorMsg = cleanupData.error;
+
+                        // Handle Asana-specific failures
                         if (!errorMsg && cleanupData.failed_projects && cleanupData.failed_projects.length > 0) {
                             errorMsg = `Failed to delete ${cleanupData.failed_projects.length} project(s):\n`;
                             errorMsg += cleanupData.failed_projects.map(p => `  • ${p.name || p.id}`).join('\n');
                             errorMsg += '\n\n(Projects may have already been deleted)';
                         }
+
                         if (!errorMsg) {
                             errorMsg = 'Unknown error during cleanup';
                         }
@@ -3259,9 +3809,22 @@
                             return;
                         }
                     } else {
-                        showToast(`Cleanup complete: ${cleanupData.deleted_projects}/${cleanupData.total_projects} projects deleted`, 'success');
+                        // Platform-specific success messages
+                        let successMsg = '';
+                        if (connectionType === 'asana') {
+                            successMsg = `Cleanup complete: ${cleanupData.deleted_projects}/${cleanupData.total_projects} projects deleted`;
+                        } else if (connectionType === 'okta') {
+                            const total = (cleanupData.users_deleted || 0) + (cleanupData.groups_deleted || 0) + (cleanupData.assignments_removed || 0);
+                            successMsg = `Cleanup complete: ${cleanupData.users_deleted || 0} users, ${cleanupData.groups_deleted || 0} groups deleted`;
+                        } else if (connectionType === 'salesforce') {
+                            const total = (cleanupData.accounts_deleted || 0) + (cleanupData.opportunities_deleted || 0) + (cleanupData.contacts_deleted || 0);
+                            successMsg = `Cleanup complete: ${cleanupData.accounts_deleted || 0} accounts, ${cleanupData.opportunities_deleted || 0} opportunities, ${cleanupData.contacts_deleted || 0} contacts deleted`;
+                        } else {
+                            successMsg = 'Cleanup complete';
+                        }
+                        showToast(successMsg, 'success');
 
-                        // Check if any failures occurred
+                        // Check if any failures occurred (Asana-specific)
                         if (cleanupData.failed_projects && cleanupData.failed_projects.length > 0) {
                             const failedNames = cleanupData.failed_projects.map(p => p.name).join(', ');
                             showToast(`⚠️ Failed to delete: ${failedNames}`, 'warning');

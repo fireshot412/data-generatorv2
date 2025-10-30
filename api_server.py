@@ -16,8 +16,10 @@ from continuous.state_manager import StateManager
 from continuous.llm_generator import LLMGenerator
 from continuous.connections.asana_connection import AsanaClientPool
 from continuous.connections.okta_connection import OktaClientPool
+from continuous.connections.salesforce_connection import SalesforceClientPool
 from continuous.services.asana_service import AsanaService, ContinuousService
 from continuous.services.okta_service import OktaService
+from continuous.services.salesforce_service import SalesforceService
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for local development
@@ -33,7 +35,14 @@ def run_service_in_thread(service: ContinuousService):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
+        print(f"[Thread] Starting service.run() for job {service.job_id}")
         loop.run_until_complete(service.run())
+        print(f"[Thread] Service.run() completed for job {service.job_id}")
+    except Exception as e:
+        import traceback
+        print(f"[Thread] EXCEPTION in service.run() for job {service.job_id}:")
+        print(f"[Thread] {type(e).__name__}: {e}")
+        traceback.print_exc()
     finally:
         loop.close()
 
@@ -106,6 +115,22 @@ def restart_running_jobs():
 
                         # Create Okta service
                         service = OktaService(config, state_manager, llm_generator, okta_pool)
+                        service.job_id = job_id
+                        service.state = state
+                        service.running = False
+                        service.paused = (job_summary['status'] in ['paused', 'stopped'])
+                        service.deleted = False
+
+                    elif connection_type == 'salesforce':
+                        # Create Salesforce client pool
+                        sf_pool = SalesforceClientPool(config['user_tokens'])
+
+                        if len(sf_pool.get_valid_clients()) == 0:
+                            print(f"⚠ Skipping job {job_id}: No valid Salesforce credentials")
+                            continue
+
+                        # Create Salesforce service
+                        service = SalesforceService(config, state_manager, llm_generator, sf_pool)
                         service.job_id = job_id
                         service.state = state
                         service.running = False
@@ -325,6 +350,56 @@ def start_job():
 
             # Create Okta service
             service = OktaService(config, state_manager, llm_generator, okta_pool)
+            job_id = service.job_id
+
+        elif connection_type == 'salesforce':
+            required = ['industry', 'instance_url', 'user_tokens', 'org_size', 'anthropic_api_key']
+            for field in required:
+                if field not in config:
+                    return jsonify({
+                        "success": False,
+                        "error": f"Missing required field for Salesforce: {field}"
+                    }), 400
+
+            # Validate instance_url format
+            if not config['instance_url'].startswith('https://'):
+                return jsonify({
+                    "success": False,
+                    "error": "instance_url must start with https://"
+                }), 400
+
+            # Validate and parse user tokens
+            user_credentials = {}
+            for user_data in config['user_tokens']:
+                if not all(k in user_data for k in ['name', 'username', 'password', 'security_token', 'instance_url']):
+                    return jsonify({
+                        "success": False,
+                        "error": "Each user token must include name, username, password, security_token, and instance_url for Salesforce"
+                    }), 400
+
+                # Parse into format expected by SalesforceClientPool
+                user_credentials[user_data['name']] = {
+                    'username': user_data['username'],
+                    'password': user_data['password'],
+                    'security_token': user_data['security_token'],
+                    'instance_url': user_data['instance_url']
+                }
+
+            # Initialize components
+            llm_generator = LLMGenerator(config['anthropic_api_key'])
+
+            # Create Salesforce client pool
+            sf_pool = SalesforceClientPool(user_credentials)
+
+            # Validate at least one valid client
+            if len(sf_pool.get_valid_clients()) == 0:
+                return jsonify({
+                    "success": False,
+                    "error": "No valid Salesforce credentials provided"
+                }), 400
+
+            # Create Salesforce service
+            service = SalesforceService(config, state_manager, llm_generator, sf_pool)
             job_id = service.job_id
 
         else:
@@ -568,6 +643,40 @@ def cleanup_job(job_id):
                 "users_deleted": result.get("users_deleted", 0),
                 "groups_deleted": result.get("groups_deleted", 0),
                 "assignments_removed": result.get("assignments_removed", 0),
+                "errors": result.get("errors", [])
+            })
+
+        elif connection_type == 'salesforce':
+            # Create Salesforce client pool
+            sf_pool = SalesforceClientPool(config['user_tokens'])
+
+            if len(sf_pool.get_valid_clients()) == 0:
+                return jsonify({
+                    "success": False,
+                    "error": "No valid Salesforce credentials available for cleanup"
+                }), 400
+
+            # Create Salesforce service for cleanup
+            service = SalesforceService(config, state_manager, llm_generator, sf_pool)
+            service.job_id = job_id
+            service.state = state
+
+            # Run cleanup synchronously in this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(service.cleanup_platform_data())
+            finally:
+                loop.close()
+
+            return jsonify({
+                "success": True,
+                "campaigns_deleted": result.get("campaigns_deleted", 0),
+                "opportunities_deleted": result.get("opportunities_deleted", 0),
+                "cases_deleted": result.get("cases_deleted", 0),
+                "contacts_deleted": result.get("contacts_deleted", 0),
+                "accounts_deleted": result.get("accounts_deleted", 0),
+                "leads_deleted": result.get("leads_deleted", 0),
                 "errors": result.get("errors", [])
             })
 
@@ -991,6 +1100,297 @@ def delete_job(job_id):
         }), 500
 
 
+@app.route('/api/salesforce/cleanup', methods=['POST'])
+def cleanup_salesforce_instance():
+    """
+    NUCLEAR OPTION: Clean up ALL Salesforce data in an instance.
+    Deletes all accounts, opportunities, contacts, leads, cases, and campaigns.
+    """
+    try:
+        data = request.json
+        instance_url = data.get('tenant_id')
+        user_tokens_data = data.get('user_tokens', [])
+
+        if not instance_url or not user_tokens_data:
+            return jsonify({
+                "success": False,
+                "error": "Missing instance_url or user_tokens"
+            }), 400
+
+        # Parse user credentials into format expected by SalesforceClientPool
+        user_credentials = {}
+        for user in user_tokens_data:
+            user_credentials[user['name']] = {
+                'username': user['username'],
+                'password': user['password'],
+                'security_token': user['security_token'],
+                'instance_url': user.get('instance_url', instance_url)
+            }
+
+        # Create Salesforce client pool
+        sf_pool = SalesforceClientPool(user_credentials)
+        all_clients = sf_pool.get_valid_clients()
+
+        if not all_clients:
+            return jsonify({
+                "success": False,
+                "error": "No valid Salesforce credentials available for cleanup"
+            }), 400
+
+        print(f"\n{'='*60}")
+        print(f"Starting INSTANCE-LEVEL cleanup for Salesforce instance {instance_url}")
+        print(f"WARNING: This will delete ALL data objects!")
+        print(f"{'='*60}\n")
+
+        # Use the first valid client for cleanup
+        client = all_clients[0]
+
+        # Query and delete all objects using bulk operations
+        deleted_accounts = 0
+        deleted_opportunities = 0
+        deleted_contacts = 0
+        deleted_leads = 0
+        deleted_cases = 0
+        deleted_campaigns = 0
+        failed_items = []
+
+        def bulk_delete(object_type, records):
+            """Delete records in batches of 200 (Salesforce limit)"""
+            deleted = 0
+            failed = []
+            batch_size = 200
+
+            for i in range(0, len(records), batch_size):
+                batch = records[i:i + batch_size]
+                batch_ids = [{'Id': record['Id']} for record in batch]
+
+                try:
+                    # Use bulk delete via simple-salesforce
+                    results = client.sf.bulk.__getattr__(object_type).delete(batch_ids)
+
+                    # Count successes and failures
+                    for idx, result in enumerate(results):
+                        if result['success']:
+                            deleted += 1
+                        else:
+                            error_msg = result.get('errors', [{}])[0].get('message', 'Unknown error')
+                            failed.append(f"{object_type} {batch[idx]['Id']}: {error_msg}")
+                except Exception as e:
+                    # If bulk fails, fall back to individual deletes for this batch
+                    print(f"Bulk delete failed for {object_type}, falling back to individual deletes: {e}")
+                    for record in batch:
+                        try:
+                            client.sf.__getattr__(object_type).delete(record['Id'])
+                            deleted += 1
+                        except Exception as del_e:
+                            failed.append(f"{object_type} {record['Id']}: {str(del_e)}")
+
+            return deleted, failed
+
+        # Delete Campaigns
+        try:
+            campaigns = client.sf.query_all("SELECT Id FROM Campaign")['records']
+            print(f"Found {len(campaigns)} campaigns to delete")
+            if campaigns:
+                deleted_campaigns, campaign_failures = bulk_delete('Campaign', campaigns)
+                failed_items.extend(campaign_failures)
+                print(f"Deleted {deleted_campaigns} campaigns")
+        except Exception as e:
+            print(f"Error querying campaigns: {e}")
+
+        # Delete Cases
+        try:
+            cases = client.sf.query_all("SELECT Id FROM Case")['records']
+            print(f"Found {len(cases)} cases to delete")
+            if cases:
+                deleted_cases, case_failures = bulk_delete('Case', cases)
+                failed_items.extend(case_failures)
+                print(f"Deleted {deleted_cases} cases")
+        except Exception as e:
+            print(f"Error querying cases: {e}")
+
+        # Delete Opportunities
+        try:
+            opportunities = client.sf.query_all("SELECT Id FROM Opportunity")['records']
+            print(f"Found {len(opportunities)} opportunities to delete")
+            if opportunities:
+                deleted_opportunities, opp_failures = bulk_delete('Opportunity', opportunities)
+                failed_items.extend(opp_failures)
+                print(f"Deleted {deleted_opportunities} opportunities")
+        except Exception as e:
+            print(f"Error querying opportunities: {e}")
+
+        # Delete Contacts
+        try:
+            contacts = client.sf.query_all("SELECT Id FROM Contact")['records']
+            print(f"Found {len(contacts)} contacts to delete")
+            if contacts:
+                deleted_contacts, contact_failures = bulk_delete('Contact', contacts)
+                failed_items.extend(contact_failures)
+                print(f"Deleted {deleted_contacts} contacts")
+        except Exception as e:
+            print(f"Error querying contacts: {e}")
+
+        # Delete Leads
+        try:
+            leads = client.sf.query_all("SELECT Id FROM Lead")['records']
+            print(f"Found {len(leads)} leads to delete")
+            if leads:
+                deleted_leads, lead_failures = bulk_delete('Lead', leads)
+                failed_items.extend(lead_failures)
+                print(f"Deleted {deleted_leads} leads")
+        except Exception as e:
+            print(f"Error querying leads: {e}")
+
+        # Delete Accounts (must be last due to dependencies)
+        try:
+            accounts = client.sf.query_all("SELECT Id FROM Account")['records']
+            print(f"Found {len(accounts)} accounts to delete")
+            if accounts:
+                deleted_accounts, account_failures = bulk_delete('Account', accounts)
+                failed_items.extend(account_failures)
+                print(f"Deleted {deleted_accounts} accounts")
+        except Exception as e:
+            print(f"Error querying accounts: {e}")
+
+        print(f"\n{'='*60}")
+        print(f"Salesforce instance cleanup complete!")
+        print(f"Deleted: {deleted_accounts} accounts, {deleted_opportunities} opportunities, {deleted_contacts} contacts, {deleted_leads} leads, {deleted_cases} cases, {deleted_campaigns} campaigns")
+        print(f"Failed: {len(failed_items)} items")
+        print(f"{'='*60}\n")
+
+        return jsonify({
+            "success": True,
+            "deleted_account": deleted_accounts,
+            "deleted_opportunity": deleted_opportunities,
+            "deleted_contact": deleted_contacts,
+            "deleted_lead": deleted_leads,
+            "deleted_case": deleted_cases,
+            "deleted_campaign": deleted_campaigns,
+            "failed_items": failed_items
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/okta/cleanup', methods=['POST'])
+def cleanup_okta_org():
+    """
+    NUCLEAR OPTION: Clean up ALL Okta data in an organization.
+    Deletes all users, groups, and app assignments.
+    """
+    try:
+        data = request.json
+        org_url = data.get('tenant_id')
+        user_tokens_data = data.get('user_tokens', [])
+
+        if not org_url or not user_tokens_data:
+            return jsonify({
+                "success": False,
+                "error": "Missing org_url or user_tokens"
+            }), 400
+
+        # Parse user credentials
+        user_credentials = {}
+        for user in user_tokens_data:
+            user_credentials[user['name']] = {
+                'token': user['token'],
+                'org_url': user.get('org_url', org_url)
+            }
+
+        # Create Okta client pool
+        okta_pool = OktaClientPool(user_credentials)
+        all_clients = okta_pool.get_valid_clients()
+
+        if not all_clients:
+            return jsonify({
+                "success": False,
+                "error": "No valid Okta API tokens available for cleanup"
+            }), 400
+
+        print(f"\n{'='*60}")
+        print(f"Starting ORG-LEVEL cleanup for Okta org {org_url}")
+        print(f"WARNING: This will delete ALL users, groups, and apps!")
+        print(f"{'='*60}\n")
+
+        # Use the first valid client for cleanup
+        client = all_clients[0]
+
+        deleted_users = 0
+        deleted_groups = 0
+        deleted_apps = 0
+        failed_items = []
+
+        # Delete all users
+        try:
+            users = client.okta.list_users()
+            print(f"Found {len(users)} users")
+            for user in users:
+                try:
+                    client.okta.deactivate_user(user['id'])
+                    client.okta.delete_user(user['id'])
+                    deleted_users += 1
+                except Exception as e:
+                    failed_items.append(f"User {user['id']}: {str(e)}")
+        except Exception as e:
+            print(f"Error querying users: {e}")
+
+        # Delete all groups
+        try:
+            groups = client.okta.list_groups()
+            print(f"Found {len(groups)} groups")
+            for group in groups:
+                try:
+                    client.okta.delete_group(group['id'])
+                    deleted_groups += 1
+                except Exception as e:
+                    failed_items.append(f"Group {group['id']}: {str(e)}")
+        except Exception as e:
+            print(f"Error querying groups: {e}")
+
+        # Delete all applications
+        try:
+            apps = client.okta.list_applications()
+            print(f"Found {len(apps)} applications")
+            for app in apps:
+                try:
+                    client.okta.deactivate_application(app['id'])
+                    client.okta.delete_application(app['id'])
+                    deleted_apps += 1
+                except Exception as e:
+                    failed_items.append(f"App {app['id']}: {str(e)}")
+        except Exception as e:
+            print(f"Error querying apps: {e}")
+
+        print(f"\n{'='*60}")
+        print(f"Okta org cleanup complete!")
+        print(f"Deleted: {deleted_users} users, {deleted_groups} groups, {deleted_apps} apps")
+        print(f"Failed: {len(failed_items)} items")
+        print(f"{'='*60}\n")
+
+        return jsonify({
+            "success": True,
+            "deleted_user": deleted_users,
+            "deleted_group": deleted_groups,
+            "deleted_app": deleted_apps,
+            "failed_items": failed_items
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 @app.route('/api/validate_token', methods=['POST'])
 def validate_token():
     """Validate an API token (supports Asana and Okta)."""
@@ -1073,6 +1473,74 @@ def validate_token():
                     "success": False,
                     "valid": False,
                     "connection_type": "okta",
+                    "error": str(e)
+                }), 401
+
+        elif connection_type == 'salesforce':
+            username = data.get('username')
+            password = data.get('password')
+            security_token = data.get('security_token')
+            instance_url = data.get('instance_url')
+
+            if not username:
+                return jsonify({
+                    "success": False,
+                    "error": "No username provided"
+                }), 400
+
+            if not password:
+                return jsonify({
+                    "success": False,
+                    "error": "No password provided"
+                }), 400
+
+            if not security_token:
+                return jsonify({
+                    "success": False,
+                    "error": "No security_token provided"
+                }), 400
+
+            if not instance_url:
+                return jsonify({
+                    "success": False,
+                    "error": "No instance_url provided"
+                }), 400
+
+            from continuous.connections.salesforce_connection import SalesforceConnection
+
+            try:
+                client = SalesforceConnection(
+                    api_key="",  # Not used for Salesforce
+                    user_name="validator",
+                    username=username,
+                    password=password,
+                    security_token=security_token,
+                    instance_url=instance_url
+                )
+
+                if client.validate_token():
+                    user_info = client.get_user_info()
+                    return jsonify({
+                        "success": True,
+                        "valid": True,
+                        "connection_type": "salesforce",
+                        "user": {
+                            "name": user_info.get("Name"),
+                            "email": user_info.get("Email"),
+                            "id": user_info.get("Id")
+                        }
+                    })
+                else:
+                    return jsonify({
+                        "success": True,
+                        "valid": False,
+                        "connection_type": "salesforce"
+                    })
+            except Exception as e:
+                return jsonify({
+                    "success": False,
+                    "valid": False,
+                    "connection_type": "salesforce",
                     "error": str(e)
                 }), 401
 
@@ -1375,7 +1843,7 @@ def health():
         "success": True,
         "status": "running",
         "active_jobs": len(running_services),
-        "connection_types_supported": ["asana", "okta"],
+        "connection_types_supported": ["asana", "okta", "salesforce"],
         "version": "2.0.0"
     })
 
@@ -1383,7 +1851,7 @@ def health():
 if __name__ == '__main__':
     print("=" * 60)
     print("Multi-Platform Continuous Data Generator - API Server")
-    print("Supported Platforms: Asana, Okta")
+    print("Supported Platforms: Asana, Okta, Salesforce")
     print("=" * 60)
     print()
     port = int(os.environ.get('PORT', 5001))
