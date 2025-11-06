@@ -777,6 +777,119 @@
             color: white;
         }
 
+        /* Configuration Mode Tabs */
+        .config-mode-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .mode-tab {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-700);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .mode-tab span {
+            font-size: 18px;
+        }
+
+        .mode-tab:hover {
+            background: var(--gray-50);
+            border-color: var(--primary);
+        }
+
+        .mode-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .config-panel {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Review Panel Styles */
+        .review-card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .review-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .review-card-body {
+            padding: 18px;
+        }
+
+        .review-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .review-item:last-child {
+            border-bottom: none;
+        }
+
+        .review-label {
+            font-size: 14px;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        .review-value {
+            font-size: 14px;
+            color: var(--gray-900);
+            font-weight: 600;
+            text-align: right;
+            max-width: 60%;
+        }
+
+        .edit-link {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .edit-link:hover {
+            background: var(--primary);
+            color: white;
+        }
+
         /* Connection Type Badges */
         .connection-badge {
             display: inline-block;
@@ -1600,17 +1713,17 @@
                                 <button class="btn ${filterType === 'all' ? 'btn-primary' : 'btn-secondary'}" onclick="renderJobs('all')">
                                     All (${jobsData.length})
                                 </button>
-                                <button class="btn ${filterType === 'asana' ? 'btn-primary' : 'btn-secondary'}" onclick="renderJobs('asana')">
-                                    <span class="connection-badge asana" style="margin-right: 4px;">Asana</span>
-                                    (${jobsData.filter(j => (j.connection_type || j.vendor || 'asana') === 'asana').length})
+                                <button class="btn ${filterType === 'asana' ? 'btn-primary' : 'btn-secondary'}" onclick="renderJobs('asana')" style="display: flex; align-items: center; gap: 6px;">
+                                    ${getPlatformLogo('asana', 18)}
+                                    <span>Asana (${jobsData.filter(j => (j.connection_type || j.vendor || 'asana') === 'asana').length})</span>
                                 </button>
-                                <button class="btn ${filterType === 'okta' ? 'btn-primary' : 'btn-secondary'}" onclick="renderJobs('okta')">
-                                    <span class="connection-badge okta" style="margin-right: 4px;">Okta</span>
-                                    (${jobsData.filter(j => (j.connection_type || j.vendor || 'asana') === 'okta').length})
+                                <button class="btn ${filterType === 'okta' ? 'btn-primary' : 'btn-secondary'}" onclick="renderJobs('okta')" style="display: flex; align-items: center; gap: 6px;">
+                                    ${getPlatformLogo('okta', 18)}
+                                    <span>Okta (${jobsData.filter(j => (j.connection_type || j.vendor || 'asana') === 'okta').length})</span>
                                 </button>
-                                <button class="btn ${filterType === 'salesforce' ? 'btn-primary' : 'btn-secondary'}" onclick="renderJobs('salesforce')">
-                                    <span class="connection-badge salesforce" style="margin-right: 4px;">Salesforce</span>
-                                    (${jobsData.filter(j => (j.connection_type || j.vendor || 'asana') === 'salesforce').length})
+                                <button class="btn ${filterType === 'salesforce' ? 'btn-primary' : 'btn-secondary'}" onclick="renderJobs('salesforce')" style="display: flex; align-items: center; gap: 6px;">
+                                    ${getPlatformLogo('salesforce', 18)}
+                                    <span>Salesforce (${jobsData.filter(j => (j.connection_type || j.vendor || 'asana') === 'salesforce').length})</span>
                                 </button>
                             </div>
                             <div class="jobs-grid">
@@ -1751,6 +1864,28 @@
             }
         }
 
+        /**
+         * Get platform logo SVG
+         */
+        function getPlatformLogo(platform, size = 20) {
+            const logos = {
+                'asana': `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="7" r="4" fill="#F06A6A"/>
+                    <circle cx="6" cy="15" r="4" fill="#F06A6A"/>
+                    <circle cx="18" cy="15" r="4" fill="#F06A6A"/>
+                </svg>`,
+                'okta': `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" fill="#007DC1"/>
+                    <circle cx="12" cy="12" r="4" fill="white"/>
+                </svg>`,
+                'salesforce': `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10.5 5.5C10.5 4.4 11.4 3.5 12.5 3.5C13.3 3.5 14 4 14.3 4.7C14.8 4.3 15.4 4 16 4C17.7 4 19 5.3 19 7C19 7.2 19 7.4 18.9 7.6C19.6 8.1 20 9 20 10C20 11.7 18.7 13 17 13H8C6.3 13 5 11.7 5 10C5 8.6 5.9 7.4 7.2 7.1C7.1 6.9 7 6.7 7 6.5C7 5.4 7.9 4.5 9 4.5C9.6 4.5 10.1 4.8 10.5 5.2V5.5Z" fill="#00A1E0"/>
+                    <path d="M8 14H16C16.6 14 17 14.4 17 15V19C17 19.6 16.6 20 16 20H8C7.4 20 7 19.6 7 19V15C7 14.4 7.4 14 8 14Z" fill="#00A1E0" opacity="0.7"/>
+                </svg>`
+            };
+            return logos[platform] || logos['asana'];
+        }
+
         function renderJobCard(job) {
             const startedAt = new Date(job.started_at);
             const now = new Date();
@@ -1762,7 +1897,10 @@
                     <div class="job-card-header">
                         <div class="job-title-section">
                             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                                <span class="connection-badge ${connectionType}">${connectionType}</span>
+                                <div style="display: flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--gray-100); border-radius: 6px;">
+                                    ${getPlatformLogo(connectionType, 16)}
+                                    <span style="font-size: 12px; font-weight: 600; text-transform: capitalize; color: var(--gray-700);">${connectionType}</span>
+                                </div>
                                 <div class="job-title">${job.job_name || job.workspace_name}</div>
                             </div>
                             <div class="job-subtitle">${job.vendor || 'asana'} • ${job.industry}${job.job_name ? ' • ' + job.workspace_name : ''} • Job ID: ${job.job_id}</div>
@@ -3060,65 +3198,232 @@
                                 />
                             </div>
 
+                            <!-- CONFIGURATION MODE TABS -->
+                            <div class="config-mode-tabs">
+                                <button type="button" class="mode-tab active" onclick="switchConfigMode(event, 'ai')">
+                                    <span>⚡</span> AI-Powered
+                                </button>
+                                <button type="button" class="mode-tab" onclick="switchConfigMode(event, 'quick')">
+                                    <span>🎯</span> Quick Setup
+                                </button>
+                                <button type="button" class="mode-tab" onclick="switchConfigMode(event, 'advanced')">
+                                    <span>⚙️</span> Advanced
+                                </button>
+                            </div>
+
+                            <!-- AI-POWERED MODE PANEL -->
+                            <div id="aiModePanel" class="config-panel" style="display: block;">
+                                <!-- PROSPECT CONTEXT SECTION -->
                             <div class="form-group">
-                                <label>Industry Theme
-                                    <div class="label-description">AI will generate contextually relevant content</div>
+                                <label for="prospectContext">Prospect Context
+                                    <span style="color: var(--gray-500); font-weight: 400; font-size: 13px;">(Optional but Recommended)</span>
+                                    <div class="label-description" id="prospectContextLabel">
+                                        Tell us about your prospect: company size, industry, key challenges, etc.
+                                    </div>
                                 </label>
-                                <div class="industry-grid" id="industryGrid">
-                                    <div class="industry-option" data-industry="finance">Finance</div>
-                                    <div class="industry-option" data-industry="healthcare">Healthcare</div>
-                                    <div class="industry-option" data-industry="manufacturing">Manufacturing</div>
-                                    <div class="industry-option" data-industry="travel">Travel</div>
-                                    <div class="industry-option selected" data-industry="technology">Technology</div>
-                                    <div class="industry-option" data-industry="retail">Retail</div>
-                                    <div class="industry-option" data-industry="education">Education</div>
-                                    <div class="industry-option" data-industry="government">Government</div>
-                                    <div class="industry-option" data-industry="energy">Energy</div>
-                                    <div class="industry-option" data-industry="media">Media</div>
+                                <textarea
+                                    id="prospectContext"
+                                    rows="4"
+                                    placeholder="e.g., Mid-size healthcare provider with 500 employees, managing complex patient care workflows across 3 hospital locations. Heavy regulatory compliance requirements and need for cross-departmental collaboration."
+                                    style="width: 100%; padding: 12px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical;"
+                                ></textarea>
+                                <div style="margin-top: 8px; display: flex; gap: 12px;">
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="analyzeProspectContext()" id="analyzeBtn">
+                                        ✨ Analyze & Get Recommendations
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-gray" onclick="skipProspectContext()" id="skipBtn">
+                                        Skip This Step
+                                    </button>
+                                </div>
+
+                                <!-- Recommendations Display (initially hidden) -->
+                                <div id="prospectRecommendations" style="display: none; margin-top: 16px; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                                        <span style="font-size: 24px;">💡</span>
+                                        <div>
+                                            <div style="font-weight: 600; font-size: 16px;">Smart Recommendations</div>
+                                            <div style="font-size: 13px; opacity: 0.9;">Based on your prospect context</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Extracted Insights -->
+                                    <div id="extractedInsights" style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.15); border-radius: 8px; backdrop-filter: blur(10px);">
+                                        <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">We detected:</div>
+                                        <div id="insightsList" style="font-size: 13px; line-height: 1.6;"></div>
+                                    </div>
+
+                                    <!-- Reasoning -->
+                                    <div id="recommendationReasoning" style="margin-bottom: 12px; padding: 12px; background: rgba(255,255,255,0.1); border-radius: 8px; backdrop-filter: blur(10px);">
+                                        <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">Why these settings:</div>
+                                        <ul id="reasoningList" style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6;"></ul>
+                                    </div>
+
+                                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                        <button type="button" class="btn btn-sm" style="background: white; color: #667eea; flex: 1;" onclick="applyRecommendations()">
+                                            ✓ Apply These Settings
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-gray" onclick="dismissRecommendations()">
+                                            ✕ Dismiss
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Loading state -->
+                                <div id="prospectAnalyzing" style="display: none; margin-top: 16px; padding: 16px; background: var(--gray-50); border-radius: 8px; text-align: center;">
+                                    <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                                    <div style="margin-top: 8px; color: var(--gray-600); font-size: 14px;">Analyzing prospect context...</div>
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label>Duration</label>
-                                <select id="durationType">
+                                <select id="durationTypeAI">
                                     <option value="7">7 days</option>
                                     <option value="14">14 days</option>
                                     <option value="30">30 days</option>
                                     <option value="indefinite">Indefinite (until stopped)</option>
                                 </select>
                             </div>
+                            </div>
+                            <!-- END AI-POWERED MODE PANEL -->
 
-                            <div class="form-group">
-                                <label>Data Volume
-                                    <div class="label-description">Amount of data to generate (projects, tasks, comments, etc.)</div>
-                                </label>
-                                <div style="display: flex; align-items: center; gap: 16px; padding: 12px 0;">
-                                    <span style="font-size: 13px; color: var(--gray-600); min-width: 50px;">Light</span>
-                                    <input type="range" id="dataVolumeSlider" min="1" max="3" value="2" step="1"
-                                           style="flex: 1; height: 6px; cursor: pointer;"
-                                           oninput="updateDataVolumeDisplay(this.value)"
-                                           onchange="updateDataVolumePresets(this.value)">
-                                    <span style="font-size: 13px; color: var(--gray-600); min-width: 50px; text-align: right;">Heavy</span>
+                            <!-- QUICK SETUP MODE PANEL -->
+                            <div id="quickModePanel" class="config-panel" style="display: none;">
+                                <div class="form-group">
+                                    <label>Industry
+                                        <div class="label-description">Select the industry context for data generation</div>
+                                    </label>
+                                    <select id="industrySelectQuick" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px;">
+                                        <option value="finance">Finance</option>
+                                        <option value="healthcare">Healthcare</option>
+                                        <option value="manufacturing">Manufacturing</option>
+                                        <option value="travel">Travel</option>
+                                        <option value="technology" selected>Technology</option>
+                                        <option value="retail">Retail</option>
+                                        <option value="education">Education</option>
+                                        <option value="government">Government</option>
+                                        <option value="energy">Energy</option>
+                                        <option value="media">Media</option>
+                                    </select>
                                 </div>
-                                <div id="dataVolumeLabel" style="text-align: center; font-size: 14px; font-weight: 600; color: var(--primary); margin-top: 8px;">
-                                    Medium
+
+                                <div class="form-group">
+                                    <label>Company Size
+                                        <div class="label-description">Simulated organization size</div>
+                                    </label>
+                                    <select id="companySizeSelectQuick" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px;">
+                                        <option value="smb">SMB (1-1,000 employees)</option>
+                                        <option value="mid_market" selected>Mid-Market (1,001-5,000 employees)</option>
+                                        <option value="enterprise">Enterprise (5,001-10,000 employees)</option>
+                                        <option value="strategic">Strategic Enterprise (10,000+ employees)</option>
+                                    </select>
                                 </div>
-                                <div style="margin-top: 12px; padding: 12px; background: var(--gray-50); border-radius: 8px; font-size: 12px; color: var(--gray-600);">
-                                    <div id="dataVolumeDescription">
-                                        Balanced data generation with realistic project and task counts
+
+                                <div class="form-group">
+                                    <label>Duration</label>
+                                    <select id="durationTypeQuick">
+                                        <option value="7">7 days</option>
+                                        <option value="14">14 days</option>
+                                        <option value="30">30 days</option>
+                                        <option value="indefinite">Indefinite (until stopped)</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Data Volume
+                                        <div class="label-description">Amount of data to generate (projects, tasks, comments, etc.)</div>
+                                    </label>
+                                    <div style="display: flex; align-items: center; gap: 16px; padding: 12px 0;">
+                                        <span style="font-size: 13px; color: var(--gray-600); min-width: 50px;">Light</span>
+                                        <input type="range" id="dataVolumeSliderQuick" min="1" max="3" value="2" step="1"
+                                               style="flex: 1; height: 6px; cursor: pointer;"
+                                               oninput="updateDataVolumeDisplay(this.value, 'Quick')"
+                                               onchange="updateDataVolumePresets(this.value)">
+                                        <span style="font-size: 13px; color: var(--gray-600); min-width: 50px; text-align: right;">Heavy</span>
+                                    </div>
+                                    <div id="dataVolumeLabelQuick" style="text-align: center; font-size: 14px; font-weight: 600; color: var(--primary); margin-top: 8px;">
+                                        Medium
+                                    </div>
+                                    <div style="margin-top: 12px; padding: 12px; background: var(--gray-50); border-radius: 8px; font-size: 12px; color: var(--gray-600);">
+                                        <div id="dataVolumeDescriptionQuick">
+                                            Balanced data generation with realistic project and task counts
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            <!-- END QUICK SETUP MODE PANEL -->
 
-                            <!-- Advanced Options -->
-                            <div style="margin: 24px 0; padding-top: 20px; border-top: 1px solid var(--gray-200);">
-                                <div onclick="toggleAdvancedOptions()" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 12px; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background='transparent'">
-                                    <span id="advancedChevron" style="transition: transform 0.2s; color: var(--gray-600);">▶</span>
-                                    <span style="font-weight: 600; color: var(--gray-700);">Advanced Options</span>
-                                    <span style="font-size: 12px; color: var(--gray-500); margin-left: auto;">Optional configuration</span>
+                            <!-- ADVANCED MODE PANEL -->
+                            <div id="advancedModePanel" class="config-panel" style="display: none;">
+                                <div class="form-group">
+                                    <label>Industry
+                                        <div class="label-description">Select the industry context for data generation</div>
+                                    </label>
+                                    <select id="industrySelectAdvanced" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px;">
+                                        <option value="finance">Finance</option>
+                                        <option value="healthcare">Healthcare</option>
+                                        <option value="manufacturing">Manufacturing</option>
+                                        <option value="travel">Travel</option>
+                                        <option value="technology" selected>Technology</option>
+                                        <option value="retail">Retail</option>
+                                        <option value="education">Education</option>
+                                        <option value="government">Government</option>
+                                        <option value="energy">Energy</option>
+                                        <option value="media">Media</option>
+                                    </select>
                                 </div>
 
-                                <div id="advancedOptions" style="display: none; padding: 16px 0;">
+                                <div class="form-group">
+                                    <label>Company Size
+                                        <div class="label-description">Simulated organization size</div>
+                                    </label>
+                                    <select id="companySizeSelectAdvanced" style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px;">
+                                        <option value="smb">SMB (1-1,000 employees)</option>
+                                        <option value="mid_market" selected>Mid-Market (1,001-5,000 employees)</option>
+                                        <option value="enterprise">Enterprise (5,001-10,000 employees)</option>
+                                        <option value="strategic">Strategic Enterprise (10,000+ employees)</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Duration</label>
+                                    <select id="durationTypeAdvanced">
+                                        <option value="7">7 days</option>
+                                        <option value="14">14 days</option>
+                                        <option value="30">30 days</option>
+                                        <option value="indefinite">Indefinite (until stopped)</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Data Volume
+                                        <div class="label-description">Amount of data to generate (projects, tasks, comments, etc.)</div>
+                                    </label>
+                                    <div style="display: flex; align-items: center; gap: 16px; padding: 12px 0;">
+                                        <span style="font-size: 13px; color: var(--gray-600); min-width: 50px;">Light</span>
+                                        <input type="range" id="dataVolumeSliderAdvanced" min="1" max="3" value="2" step="1"
+                                               style="flex: 1; height: 6px; cursor: pointer;"
+                                               oninput="updateDataVolumeDisplay(this.value, 'Advanced')"
+                                               onchange="updateDataVolumePresets(this.value)">
+                                        <span style="font-size: 13px; color: var(--gray-600); min-width: 50px; text-align: right;">Heavy</span>
+                                    </div>
+                                    <div id="dataVolumeLabelAdvanced" style="text-align: center; font-size: 14px; font-weight: 600; color: var(--primary); margin-top: 8px;">
+                                        Medium
+                                    </div>
+                                    <div style="margin-top: 12px; padding: 12px; background: var(--gray-50); border-radius: 8px; font-size: 12px; color: var(--gray-600);">
+                                        <div id="dataVolumeDescriptionAdvanced">
+                                            Balanced data generation with realistic project and task counts
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Advanced Options (always visible in Advanced tab) -->
+                                <div style="margin: 24px 0; padding-top: 20px; border-top: 1px solid var(--gray-200);">
+                                    <div style="padding: 12px 0;">
+                                        <span style="font-weight: 600; color: var(--gray-700); font-size: 15px;">Platform-Specific Settings</span>
+                                    </div>
+
+                                    <div id="advancedOptions" style="padding: 16px 0;">
                                     <!-- Asana-specific fields -->
                                     <div class="form-group asana-only">
                                         <label>Initial Projects
@@ -3256,10 +3561,80 @@
                                         <input type="number" id="projectFrequency" value="14" min="1" max="90">
                                     </div>
                                 </div>
+                                </div>
                             </div>
+                            <!-- END ADVANCED MODE PANEL -->
 
-                            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">
-                                🚀 Start Continuous Generation
+                            <!-- REVIEW & CONFIRM PANEL -->
+                            <div id="reviewPanel" class="config-panel" style="display: none;">
+                                <!-- Compact Header -->
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 2px solid var(--primary-color); margin-bottom: 20px;">
+                                    <div>
+                                        <h4 style="margin: 0; font-size: 18px; color: var(--gray-900);">Review Configuration</h4>
+                                        <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--gray-600);">Verify settings before creating your job</p>
+                                    </div>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="backToConfig()">
+                                        ✎ Edit
+                                    </button>
+                                </div>
+
+                                <!-- Compact Summary Table -->
+                                <div style="background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden;">
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <tbody>
+                                            <tr style="border-bottom: 1px solid var(--gray-200);">
+                                                <td style="padding: 12px 16px; font-weight: 500; color: var(--gray-700); width: 35%;">Connection</td>
+                                                <td style="padding: 12px 16px; color: var(--gray-900);" id="reviewConnection"></td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid var(--gray-200);">
+                                                <td style="padding: 12px 16px; font-weight: 500; color: var(--gray-700);">Job Name</td>
+                                                <td style="padding: 12px 16px; color: var(--gray-900);" id="reviewJobName"></td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid var(--gray-200);">
+                                                <td style="padding: 12px 16px; font-weight: 500; color: var(--gray-700);">Duration</td>
+                                                <td style="padding: 12px 16px; color: var(--gray-900);" id="reviewDuration"></td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid var(--gray-200);">
+                                                <td style="padding: 12px 16px; font-weight: 500; color: var(--gray-700);">Industry</td>
+                                                <td style="padding: 12px 16px; color: var(--gray-900);" id="reviewIndustry"></td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid var(--gray-200);">
+                                                <td style="padding: 12px 16px; font-weight: 500; color: var(--gray-700);">Company Size</td>
+                                                <td style="padding: 12px 16px; color: var(--gray-900);" id="reviewCompanySize"></td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid var(--gray-200);">
+                                                <td style="padding: 12px 16px; font-weight: 500; color: var(--gray-700);">Data Volume</td>
+                                                <td style="padding: 12px 16px; color: var(--gray-900);" id="reviewDataVolume"></td>
+                                            </tr>
+                                            <!-- Platform-specific rows (dynamic) -->
+                                            <tbody id="reviewPlatformRows" style="display: none;"></tbody>
+                                        </tbody>
+                                    </table>
+
+                                    <!-- AI Context Section (only for AI mode) -->
+                                    <div id="reviewAiSection" style="display: none; padding: 16px; border-top: 2px solid var(--gray-300); background: white;">
+                                        <div style="font-weight: 500; color: var(--gray-700); margin-bottom: 8px; font-size: 13px;">AI Analysis Applied</div>
+                                        <div id="reviewProspectContext" style="font-size: 13px; color: var(--gray-600); font-style: italic; margin-bottom: 12px; line-height: 1.5;"></div>
+                                        <div id="reviewAiInsights" style="font-size: 12px; color: var(--gray-600); padding: 10px; background: var(--gray-50); border-radius: 4px; border-left: 3px solid var(--primary-color);">
+                                            <!-- AI insights list -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                                    <button type="button" class="btn btn-secondary" onclick="backToConfig()" style="flex: 1;">
+                                        ← Back
+                                    </button>
+                                    <button type="button" class="btn btn-primary" onclick="confirmAndCreateJob()" style="flex: 2;">
+                                        🚀 Create Job
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- END REVIEW & CONFIRM PANEL -->
+
+                            <button type="button" class="btn btn-primary btn-lg" id="continueToReviewBtn" onclick="proceedToReview()" style="width: 100%; margin-top: 20px;">
+                                Continue to Review →
                             </button>
                         </form>
                     </div>
@@ -3406,6 +3781,453 @@
             }
         }
 
+        // ============================================================================
+        // PROSPECT CONTEXT ANALYSIS FUNCTIONS
+        // ============================================================================
+
+        // Global variable to store prospect analysis results
+        let prospectAnalysisData = null;
+
+        /**
+         * Update the prospect context placeholder based on selected platform
+         */
+        function updateProspectContextPlaceholder(platform) {
+            const textarea = document.getElementById('prospectContext');
+            const label = document.getElementById('prospectContextLabel');
+
+            if (!textarea || !label) return;
+
+            const placeholders = {
+                'asana': 'Tell us about your prospect: company size, industry, project management challenges, team structure, collaboration needs, etc.',
+                'salesforce': 'Tell us about your prospect: company size, industry, sales process complexity, deal sizes, sales cycle, pipeline management needs, etc.',
+                'okta': 'Tell us about your prospect: company size, industry, user management needs, application portfolio, security requirements, compliance needs, etc.'
+            };
+
+            const exampleTexts = {
+                'asana': 'e.g., Mid-size healthcare provider with 500 employees, managing complex patient care workflows across 3 hospital locations. Heavy regulatory compliance requirements and need for cross-departmental collaboration.',
+                'salesforce': 'e.g., Enterprise software company with 2,000 employees, selling to Fortune 500 accounts with $500K+ deal sizes and 6-9 month sales cycles. Complex account hierarchies and strong territory management needs.',
+                'okta': 'e.g., Financial services firm with 1,200 employees across 5 offices. High security requirements, strict compliance (SOC2, HIPAA), managing 50+ SaaS applications with complex user provisioning workflows.'
+            };
+
+            label.textContent = placeholders[platform] || placeholders['asana'];
+            textarea.placeholder = exampleTexts[platform] || exampleTexts['asana'];
+        }
+
+        /**
+         * Analyze prospect context using the API
+         */
+        async function analyzeProspectContext() {
+            const prospectText = document.getElementById('prospectContext').value.trim();
+            const connectionId = document.getElementById('connectionSelect').value;
+            const settings = loadSettings();
+
+            if (!prospectText) {
+                showToast('Please enter prospect context first', 'error');
+                return;
+            }
+
+            if (!connectionId) {
+                showToast('Please select a connection first', 'error');
+                return;
+            }
+
+            // Get connection details
+            const connections = loadConnections();
+            const connection = connections.find(c => c.id === connectionId);
+
+            if (!connection) {
+                showToast('Invalid connection selected', 'error');
+                return;
+            }
+
+            const platform = connection.vendor;
+
+            // Show loading state
+            document.getElementById('prospectAnalyzing').style.display = 'block';
+            document.getElementById('prospectRecommendations').style.display = 'none';
+            document.getElementById('analyzeBtn').disabled = true;
+
+            try {
+                const response = await fetch('/api/prospect-context/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prospect_text: prospectText,
+                        platform: platform,
+                        connection_name: connection.name,
+                        anthropic_api_key: settings.anthropicKey
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to analyze prospect context');
+                }
+
+                // Store the analysis data globally
+                prospectAnalysisData = result;
+
+                // Display recommendations
+                displayRecommendations(result.extracted_context, result.recommendations);
+
+                showToast('Prospect context analyzed successfully!', 'success');
+
+            } catch (error) {
+                console.error('Error analyzing prospect context:', error);
+                showToast(`Error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('prospectAnalyzing').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+
+        /**
+         * Display recommendations in the UI
+         */
+        function displayRecommendations(extractedContext, recommendations) {
+            const recommendationsDiv = document.getElementById('prospectRecommendations');
+            const insightsList = document.getElementById('insightsList');
+            const reasoningList = document.getElementById('reasoningList');
+
+            // Build insights summary
+            const insights = [];
+            if (extractedContext.industry) {
+                insights.push(`<strong>Industry:</strong> ${extractedContext.industry.charAt(0).toUpperCase() + extractedContext.industry.slice(1)}`);
+            }
+            if (extractedContext.company_size) {
+                // Use the label from backend if available, otherwise use the raw value
+                const sizeDisplay = extractedContext.company_size_label || extractedContext.company_size;
+                insights.push(`<strong>Company Size:</strong> ${sizeDisplay}`);
+            }
+            if (extractedContext.org_complexity) {
+                insights.push(`<strong>Complexity:</strong> ${extractedContext.org_complexity.charAt(0).toUpperCase() + extractedContext.org_complexity.slice(1)}`);
+            }
+            if (extractedContext.key_insights && extractedContext.key_insights.length > 0) {
+                extractedContext.key_insights.forEach(insight => {
+                    if (insight !== "Using default settings") {
+                        insights.push(`• ${insight}`);
+                    }
+                });
+            }
+
+            insightsList.innerHTML = insights.join('<br>');
+
+            // Build reasoning list
+            if (recommendations.reasoning && recommendations.reasoning.length > 0) {
+                reasoningList.innerHTML = recommendations.reasoning
+                    .map(reason => `<li>${reason}</li>`)
+                    .join('');
+            } else {
+                reasoningList.innerHTML = '<li>Using balanced default settings</li>';
+            }
+
+            // Show recommendations
+            recommendationsDiv.style.display = 'block';
+
+            // Scroll to recommendations
+            recommendationsDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        /**
+         * Apply recommendations to the form
+         */
+        function applyRecommendations() {
+            if (!prospectAnalysisData) {
+                showToast('No recommendations to apply', 'error');
+                return;
+            }
+
+            const recommendations = prospectAnalysisData.recommendations;
+            const extractedContext = prospectAnalysisData.extracted_context;
+
+            // In AI mode, recommendations are automatically used when creating the job
+            // The prospectAnalysisData is already stored globally and will be used by createJob()
+            // Just acknowledge that the recommendations are ready
+
+            // Hide recommendations and show success
+            document.getElementById('prospectRecommendations').style.display = 'none';
+            showToast('Recommendations ready! Click "Start Continuous Generation" to create the job.', 'success');
+        }
+
+        /**
+         * Dismiss recommendations without applying
+         */
+        function dismissRecommendations() {
+            document.getElementById('prospectRecommendations').style.display = 'none';
+        }
+
+        /**
+         * Skip the prospect context step
+         */
+        function skipProspectContext() {
+            document.getElementById('prospectContext').value = '';
+            prospectAnalysisData = null;
+            document.getElementById('prospectRecommendations').style.display = 'none';
+            showToast('Prospect context skipped', 'info');
+        }
+
+        // ============================================================================
+        // END PROSPECT CONTEXT FUNCTIONS
+        // ============================================================================
+
+        // ============================================================================
+        // CONFIGURATION MODE SWITCHING
+        // ============================================================================
+
+        /**
+         * Switch between AI-Powered, Quick Setup, and Advanced configuration modes
+         */
+        function switchConfigMode(event, mode) {
+            // Update tab buttons
+            document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.closest('.mode-tab').classList.add('active');
+
+            // Show/hide panels
+            document.getElementById('aiModePanel').style.display = mode === 'ai' ? 'block' : 'none';
+            document.getElementById('quickModePanel').style.display = mode === 'quick' ? 'block' : 'none';
+            document.getElementById('advancedModePanel').style.display = mode === 'advanced' ? 'block' : 'none';
+        }
+
+        // ============================================================================
+        // END CONFIGURATION MODE SWITCHING
+        // ============================================================================
+
+        // ============================================================================
+        // REVIEW & CONFIRM FLOW
+        // ============================================================================
+
+        let currentConfigMode = 'ai'; // Track which mode user configured
+
+        /**
+         * Proceed to review panel
+         */
+        function proceedToReview() {
+            // Determine current mode
+            if (document.getElementById('aiModePanel').style.display !== 'none') currentConfigMode = 'ai';
+            else if (document.getElementById('quickModePanel').style.display !== 'none') currentConfigMode = 'quick';
+            else currentConfigMode = 'advanced';
+
+            // Validate required fields first
+            const connectionId = document.getElementById('connectionSelect')?.value;
+            const jobName = document.getElementById('jobName')?.value?.trim();
+
+            if (!connectionId) {
+                showToast('Please select a connection first', 'error');
+                return;
+            }
+
+            if (!jobName) {
+                showToast('Please enter a job name', 'error');
+                return;
+            }
+
+            // Build summary data
+            buildReviewSummary(currentConfigMode);
+
+            // Hide all config panels
+            document.getElementById('aiModePanel').style.display = 'none';
+            document.getElementById('quickModePanel').style.display = 'none';
+            document.getElementById('advancedModePanel').style.display = 'none';
+
+            // Hide continue button
+            document.getElementById('continueToReviewBtn').style.display = 'none';
+
+            // Show review panel
+            document.getElementById('reviewPanel').style.display = 'block';
+
+            // Scroll to top of modal
+            const modal = document.querySelector('.modal');
+            if (modal) modal.scrollTop = 0;
+        }
+
+        /**
+         * Build review summary
+         */
+        function buildReviewSummary(mode) {
+            const connections = loadConnections();
+            const connectionId = document.getElementById('connectionSelect')?.value;
+            const connection = connections.find(c => c.id === connectionId);
+
+            // Basic info
+            document.getElementById('reviewConnection').textContent = connection?.name || 'Unknown';
+            document.getElementById('reviewJobName').textContent = document.getElementById('jobName').value;
+
+            // Duration
+            let durationElement;
+            if (mode === 'ai') durationElement = document.getElementById('durationTypeAI');
+            else if (mode === 'quick') durationElement = document.getElementById('durationTypeQuick');
+            else durationElement = document.getElementById('durationTypeAdvanced');
+
+            const durationValue = durationElement?.value || '14';
+            const durationText = durationValue === 'indefinite' ? 'Indefinite (until stopped)' : `${durationValue} days`;
+            document.getElementById('reviewDuration').textContent = durationText;
+
+            // Industry & Company Size & Data Volume
+            let industry, companySize, dataVolume;
+
+            if (mode === 'ai') {
+                // From AI recommendations
+                industry = prospectAnalysisData?.recommendations?.industry || 'Technology';
+                companySize = prospectAnalysisData?.extracted_context?.company_size_label || 'SMB (1-1,000 employees)';
+                const volLevel = prospectAnalysisData?.recommendations?.data_volume || 'medium';
+                dataVolume = volLevel.charAt(0).toUpperCase() + volLevel.slice(1);
+            } else {
+                // From manual selection
+                const industrySelect = mode === 'quick' ?
+                    document.getElementById('industrySelectQuick') :
+                    document.getElementById('industrySelectAdvanced');
+                industry = industrySelect?.options[industrySelect.selectedIndex]?.text || 'Technology';
+
+                const sizeSelect = mode === 'quick' ?
+                    document.getElementById('companySizeSelectQuick') :
+                    document.getElementById('companySizeSelectAdvanced');
+                companySize = sizeSelect?.options[sizeSelect.selectedIndex]?.text || 'SMB (1-1,000 employees)';
+
+                const volSlider = mode === 'quick' ?
+                    document.getElementById('dataVolumeSliderQuick') :
+                    document.getElementById('dataVolumeSliderAdvanced');
+                const volValue = parseInt(volSlider?.value || '2');
+                dataVolume = volValue === 1 ? 'Light' : volValue === 3 ? 'Heavy' : 'Medium';
+            }
+
+            document.getElementById('reviewIndustry').textContent = industry;
+            document.getElementById('reviewCompanySize').textContent = companySize;
+            document.getElementById('reviewDataVolume').textContent = dataVolume;
+
+            // Platform-specific settings (show only in advanced mode)
+            const platformRows = document.getElementById('reviewPlatformRows');
+            if (mode === 'advanced') {
+                platformRows.style.display = 'table-row-group';
+                buildPlatformReview(connection.vendor);
+            } else {
+                platformRows.style.display = 'none';
+            }
+
+            // AI Section (show only in AI mode)
+            if (mode === 'ai') {
+                document.getElementById('reviewAiSection').style.display = 'block';
+                const prospectText = document.getElementById('prospectContext').value.trim();
+                document.getElementById('reviewProspectContext').textContent =
+                    prospectText.length > 150 ? prospectText.substring(0, 150) + '...' : prospectText;
+
+                // Show AI insights
+                if (prospectAnalysisData?.extracted_context?.key_insights) {
+                    const insightsHtml = prospectAnalysisData.extracted_context.key_insights
+                        .map(insight => `<div style="padding: 3px 0;">• ${insight}</div>`)
+                        .join('');
+                    document.getElementById('reviewAiInsights').innerHTML = insightsHtml;
+                }
+            } else {
+                document.getElementById('reviewAiSection').style.display = 'none';
+            }
+        }
+
+        /**
+         * Build platform-specific review section as table rows
+         */
+        function buildPlatformReview(platform) {
+            const platformRows = document.getElementById('reviewPlatformRows');
+            let html = '';
+
+            if (platform === 'asana') {
+                const initialProjects = document.getElementById('initialProjects')?.value || '3';
+                const activityLevel = document.getElementById('activityLevel')?.value || 'medium';
+                html = `
+                    <tr style="border-bottom: 1px solid var(--gray-200);">
+                        <td style="padding: 12px 16px; font-weight: 500; color: var(--gray-700);">Initial Projects</td>
+                        <td style="padding: 12px 16px; color: var(--gray-900);">${initialProjects}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--gray-200);">
+                        <td style="padding: 12px 16px; font-weight: 500; color: var(--gray-700);">Activity Level</td>
+                        <td style="padding: 12px 16px; color: var(--gray-900);">${activityLevel.charAt(0).toUpperCase() + activityLevel.slice(1)}</td>
+                    </tr>
+                `;
+            } else if (platform === 'okta') {
+                const initialUsers = document.getElementById('initialUsers')?.value || '100';
+                html = `
+                    <tr style="border-bottom: 1px solid var(--gray-200);">
+                        <td style="padding: 12px 16px; font-weight: 500; color: var(--gray-700);">Initial Users</td>
+                        <td style="padding: 12px 16px; color: var(--gray-900);">${initialUsers}</td>
+                    </tr>
+                `;
+            } else if (platform === 'salesforce') {
+                const initialAccounts = document.getElementById('initialAccounts')?.value || '50';
+                const salesFocus = document.getElementById('salesFocus')?.value || 'balanced';
+                html = `
+                    <tr style="border-bottom: 1px solid var(--gray-200);">
+                        <td style="padding: 12px 16px; font-weight: 500; color: var(--gray-700);">Initial Accounts</td>
+                        <td style="padding: 12px 16px; color: var(--gray-900);">${initialAccounts}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--gray-200);">
+                        <td style="padding: 12px 16px; font-weight: 500; color: var(--gray-700);">Sales Focus</td>
+                        <td style="padding: 12px 16px; color: var(--gray-900);">${salesFocus.charAt(0).toUpperCase() + salesFocus.slice(1)}</td>
+                    </tr>
+                `;
+            }
+
+            platformRows.innerHTML = html;
+        }
+
+        /**
+         * Edit a specific section
+         */
+        function editSection(section) {
+            // Hide review panel
+            document.getElementById('reviewPanel').style.display = 'none';
+
+            // Show continue button
+            document.getElementById('continueToReviewBtn').style.display = 'block';
+
+            // Show the appropriate config panel
+            if (section === 'basic' || section === 'config') {
+                // Show the config panel for current mode
+                if (currentConfigMode === 'ai') {
+                    document.getElementById('aiModePanel').style.display = 'block';
+                } else if (currentConfigMode === 'quick') {
+                    document.getElementById('quickModePanel').style.display = 'block';
+                } else {
+                    document.getElementById('advancedModePanel').style.display = 'block';
+                }
+            } else if (section === 'ai') {
+                document.getElementById('aiModePanel').style.display = 'block';
+                currentConfigMode = 'ai';
+            } else if (section === 'advanced') {
+                document.getElementById('advancedModePanel').style.display = 'block';
+                currentConfigMode = 'advanced';
+            }
+
+            // Scroll to top
+            const modal = document.querySelector('.modal');
+            if (modal) modal.scrollTop = 0;
+        }
+
+        /**
+         * Back to config from review
+         */
+        function backToConfig() {
+            editSection('config');
+        }
+
+        /**
+         * Confirm and create job (final step)
+         */
+        function confirmAndCreateJob() {
+            // Create a synthetic event object
+            const form = document.getElementById('newJobForm');
+            const syntheticEvent = {
+                preventDefault: () => {},
+                target: form
+            };
+
+            // Call the existing createJob function
+            createJob(syntheticEvent);
+        }
+
+        // ============================================================================
+        // END REVIEW & CONFIRM FLOW
+        // ============================================================================
+
         function updateConnectionInfo() {
             const connectionId = document.getElementById('connectionSelect').value;
             const infoDiv = document.getElementById('connectionInfo');
@@ -3466,6 +4288,9 @@
                     document.querySelectorAll('.okta-only').forEach(el => el.style.display = 'none');
                     document.querySelectorAll('.salesforce-only').forEach(el => el.style.display = 'none');
                 }
+
+                // Update prospect context placeholder based on selected platform
+                updateProspectContextPlaceholder(connectionType);
             }
         }
 
@@ -3491,9 +4316,9 @@
             }
         }
 
-        function updateDataVolumeDisplay(value) {
-            const label = document.getElementById('dataVolumeLabel');
-            const description = document.getElementById('dataVolumeDescription');
+        function updateDataVolumeDisplay(value, modeSuffix = '') {
+            const label = document.getElementById('dataVolumeLabel' + modeSuffix);
+            const description = document.getElementById('dataVolumeDescription' + modeSuffix);
 
             const presets = {
                 '1': {
@@ -3510,8 +4335,10 @@
                 }
             };
 
-            label.textContent = presets[value].name;
-            description.textContent = presets[value].description;
+            if (label && description && presets[value]) {
+                label.textContent = presets[value].name;
+                description.textContent = presets[value].description;
+            }
         }
 
         function updateDataVolumePresets(value) {
@@ -3582,9 +4409,12 @@
         async function createJob(e) {
             e.preventDefault();
 
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Starting...';
+            // Find the Create Job button in the review panel
+            const submitBtn = document.querySelector('#reviewPanel button[onclick="confirmAndCreateJob()"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Starting...';
+            }
 
             try {
                 // Load settings
@@ -3634,7 +4464,21 @@
                     }));
                 }
 
-                const durationType = document.getElementById('durationType').value;
+                // Use the currentConfigMode variable set by review flow
+                const mode = currentConfigMode;
+                const aiModeActive = mode === 'ai';
+                const quickModeActive = mode === 'quick';
+                const advancedModeActive = mode === 'advanced';
+
+                // Get duration based on active mode
+                let durationType;
+                if (aiModeActive) {
+                    durationType = document.getElementById('durationTypeAI').value;
+                } else if (quickModeActive) {
+                    durationType = document.getElementById('durationTypeQuick').value;
+                } else {
+                    durationType = document.getElementById('durationTypeAdvanced').value;
+                }
 
                 // Get advanced options (with defaults)
                 const getAdvancedValue = (id, defaultValue) => {
@@ -3646,6 +4490,19 @@
                 const industryMap = {
                     'finance': 'financial_services'
                 };
+
+                // Get industry based on active mode
+                let selectedIndustry;
+                if (aiModeActive) {
+                    // AI mode doesn't need industry selection - it's extracted from prospect context
+                    // Default to technology if no recommendations applied
+                    selectedIndustry = prospectAnalysisData?.recommendations?.industry || 'technology';
+                } else if (quickModeActive) {
+                    selectedIndustry = document.getElementById('industrySelectQuick').value;
+                } else {
+                    selectedIndustry = document.getElementById('industrySelectAdvanced').value;
+                }
+
                 const mappedIndustry = industryMap[selectedIndustry] || selectedIndustry;
 
                 // Build base configuration using connection and settings
@@ -3673,22 +4530,109 @@
                     config.instance_url = connection.instanceUrl;
                 }
 
+                // Get company size if in Quick or Advanced mode
+                let companySize = 'mid_market'; // default
+                if (quickModeActive) {
+                    companySize = document.getElementById('companySizeSelectQuick').value;
+                } else if (advancedModeActive) {
+                    companySize = document.getElementById('companySizeSelectAdvanced').value;
+                }
+
+                // Map company size to platform-specific initial values
+                const companySizePresets = {
+                    'smb': { asana: 2, okta: 50, salesforce: 30, orgSize: 'startup' },
+                    'mid_market': { asana: 3, okta: 200, salesforce: 100, orgSize: 'midsize' },
+                    'enterprise': { asana: 5, okta: 1000, salesforce: 500, orgSize: 'enterprise' },
+                    'strategic': { asana: 8, okta: 5000, salesforce: 2000, orgSize: 'enterprise' }
+                };
+
                 // Add connection-specific fields
                 if (connectionType === 'asana') {
-                    config.initial_projects = parseInt(getAdvancedValue('initialProjects', 3));
-                    config.task_completion_rate = parseInt(getAdvancedValue('completionRate', 20));
-                    config.blocked_task_frequency = parseInt(getAdvancedValue('blockedFrequency', 15));
-                    config.blocked_task_duration = parseInt(getAdvancedValue('blockedDuration', 2));
-                    config.comment_frequency = parseFloat(getAdvancedValue('commentFrequency', 0.5));
-                    config.new_project_frequency_days = parseInt(getAdvancedValue('projectFrequency', 14));
+                    if (advancedModeActive) {
+                        // Use advanced fields if in Advanced mode
+                        config.initial_projects = parseInt(getAdvancedValue('initialProjects', 3));
+                        config.task_completion_rate = parseInt(getAdvancedValue('completionRate', 20));
+                        config.blocked_task_frequency = parseInt(getAdvancedValue('blockedFrequency', 15));
+                        config.blocked_task_duration = parseInt(getAdvancedValue('blockedDuration', 2));
+                        config.comment_frequency = parseFloat(getAdvancedValue('commentFrequency', 0.5));
+                        config.new_project_frequency_days = parseInt(getAdvancedValue('projectFrequency', 14));
+                    } else if (aiModeActive && prospectAnalysisData?.recommendations) {
+                        // Use AI recommendations if available
+                        const rec = prospectAnalysisData.recommendations;
+                        config.initial_projects = rec.initial_projects || 3;
+                        config.task_completion_rate = rec.task_completion_rate || 20;
+                        config.blocked_task_frequency = rec.blocked_task_frequency || 15;
+                        config.blocked_task_duration = rec.blocked_task_duration || 2;
+                        config.comment_frequency = rec.comment_frequency || 0.5;
+                        config.new_project_frequency_days = rec.project_frequency || 14;
+                    } else {
+                        // Use company size preset for Quick mode
+                        config.initial_projects = companySizePresets[companySize].asana;
+                        config.task_completion_rate = 20;
+                        config.blocked_task_frequency = 15;
+                        config.blocked_task_duration = 2;
+                        config.comment_frequency = 0.5;
+                        config.new_project_frequency_days = 14;
+                    }
                 } else if (connectionType === 'okta') {
-                    config.initial_users = parseInt(getAdvancedValue('initialUsers', 50));
-                    config.org_size = getAdvancedValue('orgSize', 'midsize');
+                    if (advancedModeActive) {
+                        // Use advanced fields if in Advanced mode
+                        config.initial_users = parseInt(getAdvancedValue('initialUsers', 50));
+                        config.org_size = getAdvancedValue('orgSize', 'midsize');
+                    } else if (aiModeActive && prospectAnalysisData?.recommendations) {
+                        // Use AI recommendations if available
+                        const rec = prospectAnalysisData.recommendations;
+                        config.initial_users = rec.initial_users || 50;
+                        config.org_size = rec.org_size || 'midsize';
+                    } else {
+                        // Use company size preset for Quick mode
+                        config.initial_users = companySizePresets[companySize].okta;
+                        config.org_size = companySizePresets[companySize].orgSize;
+                    }
                 } else if (connectionType === 'salesforce') {
-                    config.initial_accounts = parseInt(getAdvancedValue('initialAccounts', 50));
-                    config.org_size = getAdvancedValue('sfOrgSize', 'midsize');
-                    config.sales_focus = getAdvancedValue('salesFocus', 'new_business');
-                    config.case_volume = getAdvancedValue('caseVolume', 'medium');
+                    if (advancedModeActive) {
+                        // Use advanced fields if in Advanced mode
+                        config.initial_accounts = parseInt(getAdvancedValue('initialAccounts', 50));
+                        config.org_size = getAdvancedValue('sfOrgSize', 'midsize');
+                        config.sales_focus = getAdvancedValue('salesFocus', 'new_business');
+                        config.case_volume = getAdvancedValue('caseVolume', 'medium');
+                    } else if (aiModeActive && prospectAnalysisData?.recommendations) {
+                        // Use AI recommendations if available
+                        const rec = prospectAnalysisData.recommendations;
+                        config.initial_accounts = rec.initial_accounts || 50;
+                        config.org_size = rec.org_size || 'midsize';
+                        config.sales_focus = rec.sales_focus || 'balanced';
+                        config.case_volume = rec.case_volume || 'medium';
+                    } else {
+                        // Use company size preset for Quick mode
+                        config.initial_accounts = companySizePresets[companySize].salesforce;
+                        config.org_size = companySizePresets[companySize].orgSize;
+                        config.sales_focus = 'balanced';
+                        config.case_volume = 'medium';
+                    }
+                }
+
+                // Apply AI recommendations for activity settings if in AI mode
+                if (aiModeActive && prospectAnalysisData?.recommendations) {
+                    const rec = prospectAnalysisData.recommendations;
+                    if (rec.activity_level) config.activity_level = rec.activity_level;
+                    if (rec.working_hours) config.working_hours = rec.working_hours;
+                    if (rec.burst_factor !== undefined) config.burst_factor = parseFloat(rec.burst_factor);
+                }
+
+                // Add prospect context data if available
+                const prospectText = document.getElementById('prospectContext')?.value.trim();
+                if (prospectText) {
+                    config.prospect_context = {
+                        raw_text: prospectText,
+                        analyzed_at: new Date().toISOString()
+                    };
+
+                    // If we have analysis data, include it
+                    if (prospectAnalysisData) {
+                        config.prospect_context.extracted_context = prospectAnalysisData.extracted_context;
+                        config.prospect_context.recommendations = prospectAnalysisData.recommendations;
+                    }
                 }
 
                 // Start job
@@ -3715,8 +4659,10 @@
             } catch (error) {
                 showToast(`Error: ${error.message}`, 'error');
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '🚀 Start Continuous Generation';
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '🚀 Create Job';
+                }
             }
         }
 

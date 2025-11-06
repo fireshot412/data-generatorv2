@@ -20,6 +20,7 @@ from continuous.connections.salesforce_connection import SalesforceClientPool
 from continuous.services.asana_service import AsanaService, ContinuousService
 from continuous.services.okta_service import OktaService
 from continuous.services.salesforce_service import SalesforceService
+from continuous.prospect_context_analyzer import ProspectContextAnalyzer
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for local development
@@ -267,6 +268,91 @@ def get_activity_log(job_id):
             "limit": limit
         })
     except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/prospect-context/analyze', methods=['POST'])
+def analyze_prospect_context():
+    """
+    Analyze prospect context and generate platform-specific recommendations.
+
+    Request body:
+    {
+        "prospect_text": "Free-form text about the prospect",
+        "platform": "asana|salesforce|okta",
+        "connection_name": "Optional connection name",
+        "anthropic_api_key": "API key for Claude"
+    }
+
+    Returns:
+    {
+        "success": true,
+        "extracted_context": {...},
+        "recommendations": {...}
+    }
+    """
+    try:
+        data = request.json
+
+        # Validate required fields
+        if 'prospect_text' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required field: prospect_text"
+            }), 400
+
+        if 'platform' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required field: platform"
+            }), 400
+
+        if 'anthropic_api_key' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required field: anthropic_api_key"
+            }), 400
+
+        prospect_text = data['prospect_text']
+        platform = data['platform'].lower()
+        connection_name = data.get('connection_name')
+        api_key = data['anthropic_api_key']
+
+        # Validate platform
+        if platform not in ['asana', 'salesforce', 'okta']:
+            return jsonify({
+                "success": False,
+                "error": f"Unsupported platform: {platform}"
+            }), 400
+
+        # Create analyzer
+        analyzer = ProspectContextAnalyzer(api_key)
+
+        # Extract context
+        extracted_context = analyzer.analyze_prospect_context(
+            prospect_text=prospect_text,
+            platform=platform,
+            connection_name=connection_name
+        )
+
+        # Generate recommendations
+        recommendations = analyzer.generate_recommendations(
+            extracted_context=extracted_context,
+            platform=platform
+        )
+
+        return jsonify({
+            "success": True,
+            "extracted_context": extracted_context,
+            "recommendations": recommendations
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "success": False,
             "error": str(e)
