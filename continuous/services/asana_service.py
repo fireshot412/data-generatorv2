@@ -441,18 +441,26 @@ class AsanaService(BaseService):
                     # This ensures Alice and Joe have actual conversations, not just isolated comments
                     num_comments = random.randint(comment_count[0], comment_count[1])
                     print(f"      → Adding {num_comments} conversational comments...")
+
+                    # FIX: Use in-memory cache to avoid stale disk reads
+                    task_comments_cache = []
+
                     for comment_idx in range(num_comments):
-                        comment_added = await self._add_initial_comment(task_gid, task.get("name", "Task"))
+                        comment_added = await self._add_initial_comment(
+                            task_gid,
+                            task.get("name", "Task"),
+                            in_memory_comments=task_comments_cache
+                        )
                         if comment_added:
                             comments_created += 1
                             has_comment = True
                             print(f"        ✓ Comment {comment_idx+1}/{num_comments} added")
 
-                        # CRITICAL: Reload state after each comment so next iteration sees it
-                        # This fixes the bug where Joe posted back-to-back because state wasn't refreshed
+                        # Still reload state for other data (tasks, projects, etc.)
                         self.state = self.state_manager.load_state(self.job_id)
 
-                        await asyncio.sleep(0.5)
+                        # INCREASED DELAY: Give more time between comments for natural pacing
+                        await asyncio.sleep(1.5)
 
                 # Note: No additional delay needed here since we already waited 2s after task creation
 
@@ -1106,11 +1114,16 @@ class AsanaService(BaseService):
         # Fallback: allow same user to comment again (progress update in long threads)
         return last_commenter
 
-    async def _add_initial_comment(self, task_gid: str, task_name: str) -> bool:
+    async def _add_initial_comment(self, task_gid: str, task_name: str, in_memory_comments: Optional[List[Dict]] = None) -> bool:
         """
         Add an initial comment to a task during bootstrap.
         MATURE APPROACH: Uses LLM with task context to generate realistic, unique comments.
         Queries existing comments first, then generates contextual responses.
+
+        Args:
+            task_gid: Task GID
+            task_name: Task name
+            in_memory_comments: In-memory list of comments for this task (avoids stale disk reads)
         """
         client = self.client_pool.get_random_client()
         if not client:
@@ -1122,16 +1135,20 @@ class AsanaService(BaseService):
             if not all_users:
                 return False
 
-            # CRITICAL: Query existing comments from activity log for context
-            existing_comments = []
-            for activity in reversed(self.state.get("activity_log", [])):
-                if (activity.get("action") == "comment_added" and
-                    activity.get("details", {}).get("task_id") == task_gid):
-                    existing_comments.append({
-                        "user": activity["details"].get("user"),
-                        "comment": activity["details"].get("comment"),
-                        "type": activity["details"].get("type")
-                    })
+            # FIXED: Use in-memory cache if provided, otherwise query disk
+            if in_memory_comments is not None:
+                existing_comments = in_memory_comments
+            else:
+                # CRITICAL: Query existing comments from activity log for context
+                existing_comments = []
+                for activity in reversed(self.state.get("activity_log", [])):
+                    if (activity.get("action") == "comment_added" and
+                        activity.get("details", {}).get("task_id") == task_gid):
+                        existing_comments.append({
+                            "user": activity["details"].get("user"),
+                            "comment": activity["details"].get("comment"),
+                            "type": activity["details"].get("type")
+                        })
 
             # INTELLIGENT COMMENTER SELECTION
             # Select the most appropriate user to respond based on conversation context
@@ -1192,6 +1209,15 @@ class AsanaService(BaseService):
             else:
                 last_commenter = existing_comments[0].get("user") if existing_comments else "someone"
                 print(f"      ✓ Added LLM-generated response by {commenter} → {last_commenter}")
+
+            # IMPORTANT: Update in-memory cache if provided
+            if in_memory_comments is not None:
+                # Add to front of list (most recent first)
+                in_memory_comments.insert(0, {
+                    "user": commenter,
+                    "comment": comment_text,
+                    "type": comment_type
+                })
 
             return True
 
