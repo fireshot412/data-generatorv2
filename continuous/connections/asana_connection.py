@@ -251,9 +251,10 @@ class AsanaConnection(BaseConnection):
                 # IMPORTANT: Even if we can read the task, give it extra time to stabilize
                 # for child object creation (subtasks, comments)
                 if attempt == 0:
-                    # First successful read - wait 2 more seconds for full propagation
-                    print(f"        → Task is readable, waiting 2s for full propagation...")
-                    await asyncio.sleep(2)
+                    # First successful read - wait 4 more seconds for full propagation
+                    # Increased from 2s to 4s to reduce "Unknown object" errors
+                    print(f"        → Task is readable, waiting 4s for full propagation...")
+                    await asyncio.sleep(4)
                 if attempt > 0:
                     print(f"        ✓ Task became available after {attempt + 1} attempt(s)")
                 return True

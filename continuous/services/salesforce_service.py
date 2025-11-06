@@ -207,7 +207,12 @@ class SalesforceService(BaseService):
         if initial_generation:
             self.state_manager.update_job_status(self.job_id, "initializing")
             print(f"Initializing Salesforce CRM organization for {self.industry}...")
+            await self._plan_initialization()
             await self._initialize_organization()
+            # Clear the plan after initialization completes
+            if "initialization_plan" in self.state:
+                del self.state["initialization_plan"]
+                self.state_manager.save_state(self.job_id, self.state)
             self.state_manager.update_job_status(self.job_id, "running")
             print("✓ Initial CRM setup complete")
         else:
@@ -269,6 +274,77 @@ class SalesforceService(BaseService):
         # Clean shutdown
         self.state_manager.update_job_status(self.job_id, "stopped")
         print(f"Salesforce generation stopped for job {self.job_id}")
+
+    async def _plan_initialization(self):
+        """
+        Pre-compute initialization totals BEFORE creating any objects.
+        This enables "X of Y" progress tracking for better UX.
+
+        Uses the same random logic as actual creation to accurately predict counts.
+        """
+        from datetime import datetime, timezone
+
+        # Determine number of accounts based on org size
+        account_range = self.org_config["account_count_range"]
+        num_accounts = random.randint(account_range[0], account_range[1])
+
+        # Pre-roll contacts (2-10 per account)
+        total_contacts = 0
+        for _ in range(num_accounts):
+            num_contacts = random.randint(2, 10)
+            total_contacts += num_contacts
+
+        # Pre-roll opportunities
+        opp_range = self.org_config["active_opportunity_range"]
+        num_opportunities = random.randint(opp_range[0], opp_range[1])
+
+        # Pre-roll campaigns (only for enterprise)
+        num_campaigns = 0
+        if self.org_size == "enterprise":
+            num_campaigns = random.randint(3, 8)
+
+        # Pre-roll leads
+        num_leads = random.randint(20, 100)
+
+        # Estimate duration (heuristic based on object counts)
+        # Accounts: 0.5s each, Contacts: 0.3s each, Opportunities: 0.4s each
+        # Campaigns: 0.6s each, Leads: 0.3s each
+        estimated_duration = (
+            (num_accounts * 0.5) +
+            (total_contacts * 0.3) +
+            (num_opportunities * 0.4) +
+            (num_campaigns * 0.6) +
+            (num_leads * 0.3)
+        )
+
+        # Store plan in state
+        self.state["initialization_plan"] = {
+            "total_accounts": num_accounts,
+            "total_contacts": total_contacts,
+            "total_opportunities": num_opportunities,
+            "total_campaigns": num_campaigns,
+            "total_leads": num_leads,
+            "completed_accounts": 0,
+            "completed_contacts": 0,
+            "completed_opportunities": 0,
+            "completed_campaigns": 0,
+            "completed_leads": 0,
+            "start_time": datetime.now(timezone.utc).isoformat(),
+            "estimated_duration_seconds": int(estimated_duration)
+        }
+
+        self.state_manager.save_state(self.job_id, self.state)
+
+        print(f"\n{'='*60}")
+        print(f"INITIALIZATION PLAN")
+        print(f"{'='*60}")
+        print(f"  Accounts: {num_accounts}")
+        print(f"  Contacts: {total_contacts}")
+        print(f"  Opportunities: {num_opportunities}")
+        print(f"  Campaigns: {num_campaigns}")
+        print(f"  Leads: {num_leads}")
+        print(f"  Estimated duration: {int(estimated_duration)}s")
+        print(f"{'='*60}\n")
 
     async def _initialize_organization(self):
         """
@@ -400,6 +476,10 @@ class SalesforceService(BaseService):
 
                         account_count += 1
 
+                        # Update initialization plan if it exists
+                        if "initialization_plan" in self.state:
+                            self.state["initialization_plan"]["completed_accounts"] += 1
+
                         if account_count % 10 == 0:
                             print(f"  Created {account_count}/{num_accounts} accounts")
 
@@ -455,6 +535,10 @@ class SalesforceService(BaseService):
 
                         account_data["contacts"].append(contact["gid"])
                         contact_count += 1
+
+                        # Update initialization plan if it exists
+                        if "initialization_plan" in self.state:
+                            self.state["initialization_plan"]["completed_contacts"] += 1
 
                     await asyncio.sleep(0.2)
 
@@ -529,6 +613,10 @@ class SalesforceService(BaseService):
                     account_data["opportunities"].append(opportunity["gid"])
                     opp_count += 1
 
+                    # Update initialization plan if it exists
+                    if "initialization_plan" in self.state:
+                        self.state["initialization_plan"]["completed_opportunities"] += 1
+
                     if opp_count % 10 == 0:
                         print(f"  Created {opp_count}/{num_opportunities} opportunities")
 
@@ -570,6 +658,10 @@ class SalesforceService(BaseService):
                         "created_at": datetime.now(timezone.utc).isoformat(),
                         "created_by": client.user_name
                     }
+
+                    # Update initialization plan if it exists
+                    if "initialization_plan" in self.state:
+                        self.state["initialization_plan"]["completed_campaigns"] += 1
 
                 await asyncio.sleep(0.5)
 
@@ -621,6 +713,10 @@ class SalesforceService(BaseService):
                     }
 
                     lead_count += 1
+
+                    # Update initialization plan if it exists
+                    if "initialization_plan" in self.state:
+                        self.state["initialization_plan"]["completed_leads"] += 1
 
                 await asyncio.sleep(0.2)
 

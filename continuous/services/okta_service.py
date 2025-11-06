@@ -155,7 +155,12 @@ class OktaService(BaseService):
         if initial_generation:
             self.state_manager.update_job_status(self.job_id, "initializing")
             print(f"Initializing Okta organization for {self.industry}...")
+            await self._plan_initialization()
             await self._initialize_organization()
+            # Clear the plan after initialization completes
+            if "initialization_plan" in self.state:
+                del self.state["initialization_plan"]
+                self.state_manager.save_state(self.job_id, self.state)
             self.state_manager.update_job_status(self.job_id, "running")
             print("✓ Initial organization setup complete")
         else:
@@ -217,6 +222,75 @@ class OktaService(BaseService):
         # Clean shutdown
         self.state_manager.update_job_status(self.job_id, "stopped")
         print(f"Okta generation stopped for job {self.job_id}")
+
+    async def _plan_initialization(self):
+        """
+        Pre-compute initialization totals BEFORE creating any objects.
+        This enables "X of Y" progress tracking for better UX.
+
+        Uses the same random logic as actual creation to accurately predict counts.
+        """
+        from datetime import datetime, timezone
+
+        # Determine number of users
+        num_users = self.initial_users
+
+        # Determine number of groups
+        departments = get_departments_for_industry(self.industry)
+        num_groups = 1  # "All Employees" group
+        num_groups += len(departments)  # Department groups
+
+        # Add role-based groups if org has complex hierarchy
+        if self.org_config.get("has_complex_hierarchy"):
+            num_groups += 4  # Managers, Senior Engineers, Directors, Contractors
+
+        # Pre-roll group assignments (each user gets at least 2 groups: All Employees + Department)
+        # Plus some users get role-based groups
+        users_per_dept = num_users // len(departments)
+        total_group_assignments = num_users * 2  # Base: All Employees + Department
+
+        # Add manager assignments if complex hierarchy
+        if self.org_config.get("has_complex_hierarchy"):
+            num_managers = int(num_users * self.org_config.get("executive_ratio", 0.1))
+            total_group_assignments += num_managers  # Managers also get "Managers" group
+
+        # Pre-roll app assignments (each user gets 3-5 apps initially)
+        total_app_assignments = num_users * 4  # Average of 4 apps per user
+
+        # Estimate duration (heuristic based on object counts)
+        # Groups: 0.6s each, Users: 0.3s each, Group assignments: 0.2s each, App assignments: 0.2s each
+        estimated_duration = (
+            (num_groups * 0.6) +
+            (num_users * 0.3) +
+            (total_group_assignments * 0.2) +
+            (total_app_assignments * 0.2)
+        )
+
+        # Store plan in state
+        self.state["initialization_plan"] = {
+            "total_groups": num_groups,
+            "total_users": num_users,
+            "total_group_assignments": total_group_assignments,
+            "total_app_assignments": total_app_assignments,
+            "completed_groups": 0,
+            "completed_users": 0,
+            "completed_group_assignments": 0,
+            "completed_app_assignments": 0,
+            "start_time": datetime.now(timezone.utc).isoformat(),
+            "estimated_duration_seconds": int(estimated_duration)
+        }
+
+        self.state_manager.save_state(self.job_id, self.state)
+
+        print(f"\n{'='*60}")
+        print(f"INITIALIZATION PLAN")
+        print(f"{'='*60}")
+        print(f"  Groups: {num_groups}")
+        print(f"  Users: {num_users}")
+        print(f"  Group Assignments: {total_group_assignments}")
+        print(f"  App Assignments: {total_app_assignments}")
+        print(f"  Estimated duration: {int(estimated_duration)}s")
+        print(f"{'='*60}\n")
 
     async def _initialize_organization(self):
         """
@@ -281,6 +355,9 @@ class OktaService(BaseService):
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "created_by": client.user_name
                 }
+                # Update initialization plan if it exists
+                if "initialization_plan" in self.state:
+                    self.state["initialization_plan"]["completed_groups"] += 1
                 print(f"  Created group: All Employees")
         except Exception as e:
             print(f"  Error creating All Employees group: {e}")
@@ -320,6 +397,9 @@ class OktaService(BaseService):
                         "created_at": datetime.now(timezone.utc).isoformat(),
                         "created_by": client.user_name
                     }
+                    # Update initialization plan if it exists
+                    if "initialization_plan" in self.state:
+                        self.state["initialization_plan"]["completed_groups"] += 1
                     print(f"  Created department group: {dept}")
 
                 await asyncio.sleep(0.5)  # Rate limit protection
@@ -346,6 +426,9 @@ class OktaService(BaseService):
                             "created_at": datetime.now(timezone.utc).isoformat(),
                             "created_by": client.user_name
                         }
+                        # Update initialization plan if it exists
+                        if "initialization_plan" in self.state:
+                            self.state["initialization_plan"]["completed_groups"] += 1
                         print(f"  Created role group: {role}")
 
                     await asyncio.sleep(0.5)
@@ -357,7 +440,6 @@ class OktaService(BaseService):
         print(f"Creating {self.initial_users} initial users...")
 
         departments = get_departments_for_industry(self.industry)
-        roles = get_roles_for_industry(self.industry)
         locations = self.org_config.get("locations", ["Remote"])
 
         # Calculate user distribution across departments
@@ -383,11 +465,8 @@ class OktaService(BaseService):
                         title = random.choice(["Manager", "Director", "VP", "Senior Manager"])
                         title = f"{title} of {dept}"
                     else:
-                        # Get department-appropriate role
-                        dept_roles = [r for r in roles if dept.lower() in r.lower() or "specialist" in r.lower()]
-                        if not dept_roles:
-                            dept_roles = ["Specialist", "Analyst", "Associate", "Coordinator"]
-                        title = random.choice(dept_roles)
+                        # Use _generate_job_title to get department-appropriate title
+                        title = self._generate_job_title(dept)
 
                     profile = {
                         "firstName": first_name,
@@ -428,6 +507,10 @@ class OktaService(BaseService):
 
                         user_count += 1
 
+                        # Update initialization plan if it exists
+                        if "initialization_plan" in self.state:
+                            self.state["initialization_plan"]["completed_users"] += 1
+
                         if user_count % 10 == 0:
                             print(f"  Created {user_count}/{self.initial_users} users")
 
@@ -467,6 +550,9 @@ class OktaService(BaseService):
                         user["groups"].append(all_employees_group)
                         self.state["groups"][all_employees_group]["member_count"] += 1
                         assignment_count += 1
+                        # Update initialization plan if it exists
+                        if "initialization_plan" in self.state:
+                            self.state["initialization_plan"]["completed_group_assignments"] += 1
                 except Exception as e:
                     print(f"  Error adding user to All Employees: {e}")
 
@@ -486,6 +572,9 @@ class OktaService(BaseService):
                                 user["groups"].append(group_id)
                                 self.state["groups"][group_id]["member_count"] += 1
                                 assignment_count += 1
+                                # Update initialization plan if it exists
+                                if "initialization_plan" in self.state:
+                                    self.state["initialization_plan"]["completed_group_assignments"] += 1
                         except Exception as e:
                             print(f"  Error adding user to {dept}: {e}")
                         break
@@ -506,6 +595,9 @@ class OktaService(BaseService):
                                 user["groups"].append(group_id)
                                 self.state["groups"][group_id]["member_count"] += 1
                                 assignment_count += 1
+                                # Update initialization plan if it exists
+                                if "initialization_plan" in self.state:
+                                    self.state["initialization_plan"]["completed_group_assignments"] += 1
                         except Exception as e:
                             print(f"  Error adding manager to role group: {e}")
                         break
@@ -595,6 +687,9 @@ class OktaService(BaseService):
                         }
                         user["apps"].append(app_id)
                         assignment_count += 1
+                        # Update initialization plan if it exists
+                        if "initialization_plan" in self.state:
+                            self.state["initialization_plan"]["completed_app_assignments"] += 1
 
                 except Exception as e:
                     # Silently skip if app assignment fails

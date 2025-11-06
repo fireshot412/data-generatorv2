@@ -503,6 +503,82 @@
             font-style: italic;
         }
 
+        .job-init-progress {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .job-init-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .job-init-progress-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #3b82f6;
+        }
+
+        .job-init-progress-percentage {
+            font-size: 18px;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+
+        .job-init-progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .job-init-progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%);
+            border-radius: 4px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .job-init-progress-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .job-init-progress-item {
+            font-size: 12px;
+            color: var(--gray-700);
+            padding: 6px 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .job-init-progress-item-label {
+            font-weight: 600;
+            color: var(--gray-600);
+        }
+
+        .job-init-progress-item-value {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .job-init-progress-eta {
+            font-size: 12px;
+            color: var(--gray-600);
+            text-align: center;
+            font-style: italic;
+        }
+
         .job-actions {
             display: flex;
             gap: 8px;
@@ -1140,6 +1216,13 @@
                     refreshData();
                 }
             }, 30000);
+
+            // More frequent updates for initialization progress (every 5 seconds)
+            setInterval(() => {
+                if (currentView === 'jobs') {
+                    updateInitializationProgress();
+                }
+            }, 5000);
         });
 
         function initializeNavigation() {
@@ -1743,6 +1826,9 @@
 
                         html += '</div>';
                         contentArea.innerHTML = html;
+
+                        // Update initialization progress for any initializing jobs
+                        await updateInitializationProgress();
                     }
                 } else {
                     throw new Error(data.error);
@@ -1865,6 +1951,144 @@
         }
 
         /**
+         * Fetch initialization progress for a job
+         */
+        async function fetchInitializationProgress(jobId) {
+            try {
+                const response = await fetch(`${API_BASE}/jobs/${jobId}/initialization-progress`);
+                const data = await response.json();
+
+                if (data.success && data.initializing) {
+                    // Return both progress and details
+                    return {
+                        percentage: data.progress.percentage,
+                        completed_objects: data.progress.completed_objects,
+                        total_objects: data.progress.total_objects,
+                        eta_seconds: data.progress.eta_seconds,
+                        elapsed_seconds: data.progress.elapsed_seconds,
+                        details: data.details
+                    };
+                }
+                return null;
+            } catch (error) {
+                console.error('Error fetching initialization progress:', error);
+                return null;
+            }
+        }
+
+        /**
+         * Format ETA in a human-readable way
+         */
+        function formatETA(etaSeconds) {
+            if (!etaSeconds || etaSeconds < 0) {
+                return 'Calculating...';
+            }
+
+            if (etaSeconds < 60) {
+                return `~${Math.round(etaSeconds)} seconds`;
+            } else if (etaSeconds < 3600) {
+                const minutes = Math.round(etaSeconds / 60);
+                return `~${minutes} minute${minutes !== 1 ? 's' : ''}`;
+            } else {
+                const hours = Math.floor(etaSeconds / 3600);
+                const minutes = Math.round((etaSeconds % 3600) / 60);
+                if (minutes === 0) {
+                    return `~${hours} hour${hours !== 1 ? 's' : ''}`;
+                }
+                return `~${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+            }
+        }
+
+        /**
+         * Get platform-specific object labels
+         */
+        function getPlatformObjectLabels(platform) {
+            const labels = {
+                'asana': {
+                    'projects': 'Projects',
+                    'tasks': 'Tasks',
+                    'subtasks': 'Subtasks',
+                    'comments': 'Comments',
+                    'sections': 'Sections',
+                    'tags': 'Tags',
+                    'custom_fields': 'Custom Fields',
+                    'portfolios': 'Portfolios'
+                },
+                'salesforce': {
+                    'accounts': 'Accounts',
+                    'contacts': 'Contacts',
+                    'opportunities': 'Opportunities',
+                    'campaigns': 'Campaigns',
+                    'leads': 'Leads',
+                    'cases': 'Cases'
+                },
+                'okta': {
+                    'groups': 'Groups',
+                    'users': 'Users',
+                    'group_assignments': 'Group Assignments',
+                    'app_assignments': 'App Assignments'
+                }
+            };
+            return labels[platform] || labels['asana'];
+        }
+
+        /**
+         * Render initialization progress section
+         */
+        function renderInitializationProgress(progress, connectionType) {
+            if (!progress) {
+                return '';
+            }
+
+            const percentage = progress.percentage || 0;
+            const details = progress.details || {};
+
+            // Get platform-specific labels
+            const labels = getPlatformObjectLabels(connectionType);
+
+            // Build progress items HTML from details
+            let progressItemsHtml = '';
+
+            // Extract object types and their counts from details
+            const objectTypes = [];
+            for (const key in details) {
+                if (key.startsWith('total_')) {
+                    const objectType = key.replace('total_', '');
+                    const total = details[key];
+                    const completed = details[`completed_${objectType}`] || 0;
+                    const label = labels[objectType] || objectType;
+
+                    objectTypes.push({ label, completed, total });
+                }
+            }
+
+            // Render each object type
+            for (const obj of objectTypes) {
+                progressItemsHtml += `
+                    <div class="job-init-progress-item">
+                        <span class="job-init-progress-item-label">${obj.label}:</span>
+                        <span class="job-init-progress-item-value">${obj.completed} of ${obj.total}</span>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="job-init-progress">
+                    <div class="job-init-progress-header">
+                        <div class="job-init-progress-title">Initializing...</div>
+                        <div class="job-init-progress-percentage">${percentage}% complete</div>
+                    </div>
+                    <div class="job-init-progress-bar-container">
+                        <div class="job-init-progress-bar-fill" style="width: ${percentage}%"></div>
+                    </div>
+                    <div class="job-init-progress-details">
+                        ${progressItemsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
          * Get platform logo SVG
          */
         function getPlatformLogo(platform, size = 20) {
@@ -1909,17 +2133,14 @@
                     </div>
 
                     <div class="job-card-body">
+                        <!-- Progress container (will be populated if job is initializing) -->
+                        <div id="init-progress-${job.job_id}" style="display: none;"></div>
+
                         <div class="job-stats-grid">
                             ${renderJobStats(job, connectionType)}
                         </div>
 
-                        ${job.status === 'initializing' ? `
-                            <div class="job-next-activity">
-                                <div class="job-next-activity-label">⚙️ Status</div>
-                                <div class="job-next-activity-time">Generating initial data...</div>
-                                <div class="job-next-activity-note">This job is creating its first projects and tasks. It will transition to 'running' status once complete.</div>
-                            </div>
-                        ` : job.next_activity_time ? `
+                        ${job.status !== 'initializing' && job.next_activity_time ? `
                             <div class="job-next-activity ${job.status === 'stopped' || job.status === 'paused' ? 'inactive' : ''}">
                                 <div class="job-next-activity-label">⏰ Next Scheduled Activity</div>
                                 ${(job.status === 'stopped' || job.status === 'paused') && new Date(job.next_activity_time) < new Date() ?
@@ -1949,6 +2170,44 @@
                     </div>
                 </div>
             `;
+        }
+
+        /**
+         * Update initialization progress for all initializing jobs
+         */
+        async function updateInitializationProgress() {
+            if (!jobsData || jobsData.length === 0) {
+                return;
+            }
+
+            // Find all jobs that might be initializing (check via API, not status)
+            const initializingJobs = jobsData.filter(job => job.status === 'initializing' || job.status === 'running');
+
+            // Fetch and update progress for each initializing job
+            for (const job of initializingJobs) {
+                const progressContainer = document.getElementById(`init-progress-${job.job_id}`);
+                if (!progressContainer) {
+                    continue;
+                }
+
+                try {
+                    const progress = await fetchInitializationProgress(job.job_id);
+                    const connectionType = job.connection_type || job.vendor || 'asana';
+
+                    if (progress) {
+                        // Update with detailed progress and show container
+                        progressContainer.innerHTML = renderInitializationProgress(progress, connectionType);
+                        progressContainer.style.display = 'block';
+                    } else {
+                        // Job is no longer initializing, hide container
+                        progressContainer.style.display = 'none';
+                        progressContainer.innerHTML = '';
+                    }
+                } catch (error) {
+                    console.error(`Error updating progress for job ${job.job_id}:`, error);
+                    progressContainer.style.display = 'none';
+                }
+            }
         }
 
         function renderSettings() {

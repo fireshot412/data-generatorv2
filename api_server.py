@@ -237,6 +237,94 @@ def get_job(job_id):
         }), 500
 
 
+@app.route('/api/jobs/<job_id>/initialization-progress', methods=['GET'])
+def get_initialization_progress(job_id):
+    """Get initialization progress for a job (if currently initializing)."""
+    try:
+        state = state_manager.load_state(job_id)
+        if not state:
+            return jsonify({
+                "success": False,
+                "error": "Job not found"
+            }), 404
+
+        # Check if initialization plan exists
+        if "initialization_plan" not in state:
+            return jsonify({
+                "success": True,
+                "initializing": False,
+                "message": "Job is not currently initializing"
+            })
+
+        plan = state["initialization_plan"]
+
+        # Calculate overall progress percentage
+        total_objects = sum([
+            plan.get("total_projects", 0),
+            plan.get("total_tasks", 0),
+            plan.get("total_subtasks", 0),
+            plan.get("total_comments", 0),
+            plan.get("total_accounts", 0),
+            plan.get("total_contacts", 0),
+            plan.get("total_opportunities", 0),
+            plan.get("total_campaigns", 0),
+            plan.get("total_leads", 0),
+            plan.get("total_groups", 0),
+            plan.get("total_users", 0),
+            plan.get("total_group_assignments", 0),
+            plan.get("total_app_assignments", 0)
+        ])
+
+        completed_objects = sum([
+            plan.get("completed_projects", 0),
+            plan.get("completed_tasks", 0),
+            plan.get("completed_subtasks", 0),
+            plan.get("completed_comments", 0),
+            plan.get("completed_accounts", 0),
+            plan.get("completed_contacts", 0),
+            plan.get("completed_opportunities", 0),
+            plan.get("completed_campaigns", 0),
+            plan.get("completed_leads", 0),
+            plan.get("completed_groups", 0),
+            plan.get("completed_users", 0),
+            plan.get("completed_group_assignments", 0),
+            plan.get("completed_app_assignments", 0)
+        ])
+
+        percentage = int((completed_objects / total_objects * 100)) if total_objects > 0 else 0
+
+        # Calculate ETA
+        from datetime import datetime, timezone, timedelta
+        start_time = datetime.fromisoformat(plan.get("start_time"))
+        elapsed_seconds = (datetime.now(timezone.utc) - start_time).total_seconds()
+        estimated_total = plan.get("estimated_duration_seconds", 0)
+
+        if percentage > 5:  # Only calculate ETA after 5% to avoid wild estimates
+            actual_rate = elapsed_seconds / (completed_objects if completed_objects > 0 else 1)
+            remaining_objects = total_objects - completed_objects
+            eta_seconds = int(actual_rate * remaining_objects)
+        else:
+            eta_seconds = estimated_total - int(elapsed_seconds)
+
+        return jsonify({
+            "success": True,
+            "initializing": True,
+            "progress": {
+                "percentage": percentage,
+                "completed_objects": completed_objects,
+                "total_objects": total_objects,
+                "eta_seconds": max(0, eta_seconds),
+                "elapsed_seconds": int(elapsed_seconds)
+            },
+            "details": plan
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 @app.route('/api/jobs/<job_id>/activity_log', methods=['GET'])
 def get_activity_log(job_id):
     """Get activity log for a job."""

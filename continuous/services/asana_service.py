@@ -56,10 +56,17 @@ class AsanaService(BaseService):
 
         # Initialize with initial projects if none exist
         if initial_generation:
+            # STEP 1: Plan initialization (compute totals upfront for UX)
+            await self._plan_initialization()
+
+            # STEP 2: Execute initialization
             await self._create_initial_projects()
             # Bootstrap with initial activity to provide immediate data
             await self._bootstrap_initial_activity()
-            # CRITICAL: Transition to "running" after initial generation completes
+
+            # STEP 3: Clear plan and transition to "running"
+            self.state.pop("initialization_plan", None)
+            self.state_manager.save_state(self.job_id, self.state)
             self.state_manager.update_job_status(self.job_id, "running")
             print("✓ Initial generation complete - job is now running")
         else:
@@ -147,6 +154,89 @@ class AsanaService(BaseService):
         elapsed_days = (datetime.now(timezone.utc) - started_at).days
 
         return elapsed_days < duration_days
+    async def _plan_initialization(self):
+        """
+        Pre-compute initialization totals BEFORE creating any objects.
+        This enables "X of Y" progress tracking for better UX.
+
+        Uses the same random logic as actual creation to accurately predict counts.
+        """
+        from datetime import datetime, timezone
+
+        num_projects = self.config.get("initial_projects", 3)
+        activity_level = self.config.get("activity_level", "medium")
+
+        # Determine ranges based on activity level (same logic as _create_project)
+        if activity_level == "low":
+            task_range = (5, 8)
+            subtask_prob = 0.50
+            subtask_count = (2, 3)
+            comment_prob = 0.80
+            comment_count = (3, 5)
+        elif activity_level == "high":
+            task_range = (15, 25)
+            subtask_prob = 0.70
+            subtask_count = (3, 6)
+            comment_prob = 0.90
+            comment_count = (6, 10)
+        else:  # medium
+            task_range = (8, 15)
+            subtask_prob = 0.60
+            subtask_count = (2, 4)
+            comment_prob = 0.80
+            comment_count = (4, 7)
+
+        # Pre-roll all random numbers to compute exact totals
+        total_tasks = 0
+        total_subtasks = 0
+        total_comments = 0
+
+        for project_idx in range(num_projects):
+            # Determine task count for this project (same RNG logic)
+            num_tasks = random.randint(task_range[0], task_range[1])
+            total_tasks += num_tasks
+
+            for task_idx in range(num_tasks):
+                # Guarantee first 3 tasks get subtasks (minimum guarantee)
+                should_add_subtasks = (task_idx <= 2) or random.random() < subtask_prob
+                if should_add_subtasks:
+                    num_subtasks = random.randint(subtask_count[0], subtask_count[1])
+                    total_subtasks += num_subtasks
+
+                # Guarantee first 2 tasks get comments
+                should_add_comments = (task_idx <= 1) or random.random() < comment_prob
+                if should_add_comments:
+                    num_comments_for_task = random.randint(comment_count[0], comment_count[1])
+                    total_comments += num_comments_for_task
+
+        # Estimate duration (heuristic: 2s per project, 0.5s per task, 1.5s per comment batch, 0.3s per subtask)
+        estimated_duration = (num_projects * 2.0) + (total_tasks * 0.5) + (total_comments * 0.2) + (total_subtasks * 0.3)
+
+        # Store plan in state
+        self.state["initialization_plan"] = {
+            "total_projects": num_projects,
+            "total_tasks": total_tasks,
+            "total_subtasks": total_subtasks,
+            "total_comments": total_comments,
+            "completed_projects": 0,
+            "completed_tasks": 0,
+            "completed_subtasks": 0,
+            "completed_comments": 0,
+            "start_time": datetime.now(timezone.utc).isoformat(),
+            "estimated_duration_seconds": int(estimated_duration)
+        }
+
+        self.state_manager.save_state(self.job_id, self.state)
+
+        print(f"\n{'='*60}")
+        print(f"📋 INITIALIZATION PLAN")
+        print(f"{'='*60}")
+        print(f"  Projects: {num_projects}")
+        print(f"  Tasks: {total_tasks}")
+        print(f"  Subtasks: {total_subtasks}")
+        print(f"  Comments: {total_comments}")
+        print(f"  Estimated duration: {int(estimated_duration)}s")
+        print(f"{'='*60}\n")
 
     async def _create_initial_projects(self):
         """Create initial projects to start with."""
@@ -460,7 +550,8 @@ class AsanaService(BaseService):
                         self.state = self.state_manager.load_state(self.job_id)
 
                         # INCREASED DELAY: Give more time between comments for natural pacing
-                        await asyncio.sleep(1.5)
+                        # Increased from 1.5s to 2.5s to reduce race conditions
+                        await asyncio.sleep(2.5)
 
                 # Note: No additional delay needed here since we already waited 2s after task creation
 
@@ -1043,6 +1134,11 @@ class AsanaService(BaseService):
             if "stats" not in self.state:
                 self.state["stats"] = {}
             self.state["stats"]["subtasks_created"] = self.state["stats"].get("subtasks_created", 0) + 1
+
+            # Update initialization progress if plan exists
+            if "initialization_plan" in self.state:
+                self.state["initialization_plan"]["completed_subtasks"] += 1
+
             self.state_manager.save_state(self.job_id, self.state)
 
             self.state_manager.increment_api_usage(self.job_id, "asana", 1)

@@ -232,6 +232,11 @@ class StateManager:
             }
             state["projects"].append(project_entry)
             state["stats"]["projects_created"] += 1
+
+            # Update initialization progress if plan exists
+            if "initialization_plan" in state:
+                state["initialization_plan"]["completed_projects"] += 1
+
             self.save_state(job_id, state)
 
     def add_task(self, job_id: str, project_id: str, task: Dict[str, Any]):
@@ -265,6 +270,11 @@ class StateManager:
                     }
                     project["tasks"].append(task_entry)
                     state["stats"]["tasks_created"] += 1
+
+                    # Update initialization progress if plan exists
+                    if "initialization_plan" in state:
+                        state["initialization_plan"]["completed_tasks"] += 1
+
                     break
             self.save_state(job_id, state)
 
@@ -328,6 +338,11 @@ class StateManager:
                         break
 
             state["stats"]["comments_added"] += 1
+
+            # Update initialization progress if plan exists
+            if "initialization_plan" in state:
+                state["initialization_plan"]["completed_comments"] += 1
+
             self.save_state(job_id, state)
 
     def log_activity(self, job_id: str, action: str, details: Dict[str, Any]):
